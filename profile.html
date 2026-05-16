@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户中心 - AutoSight 汽配供需选品工具</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0066FF;
+            --success: #00C853;
+            --danger: #FF3B30;
+            --warning: #FF9500;
+            --bg-dark: #0D1117;
+            --bg-card: #161B22;
+            --bg-card-hover: #21262D;
+            --text-primary: #FFFFFF;
+            --text-secondary: #8B949E;
+            --text-muted: #6E7681;
+            --border: #30363D;
+            --gradient-blue: linear-gradient(135deg, #0066FF 0%, #00D4FF 100%);
+            --gradient-green: linear-gradient(135deg, #00C853 0%, #00E676 100%);
+            --gradient-gold: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .noise-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 9999; opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        .app-container { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+
+        .navbar {
+            background: rgba(13, 17, 23, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 0;
+            position: sticky; top: 0; z-index: 1000;
+        }
+
+        .navbar-content { display: flex; justify-content: space-between; align-items: center; }
+
+        .logo { display: flex; align-items: center; gap: 12px; }
+
+        .logo-icon {
+            width: 40px; height: 40px;
+            background: var(--gradient-blue);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+
+        .logo-text { font-family: 'Space Mono', monospace; font-size: 20px; font-weight: 700; }
+        .logo-text span { color: var(--primary); }
+
+        .nav-links { display: flex; gap: 8px; }
+
+        .nav-link {
+            padding: 8px 16px; border-radius: 8px;
+            color: var(--text-secondary); text-decoration: none;
+            font-size: 14px; font-weight: 500;
+            transition: all 0.2s ease; cursor: pointer;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--text-primary); background: var(--bg-card-hover);
+        }
+
+        .nav-link.active { background: var(--primary); color: white; }
+
+        .user-section { display: flex; align-items: center; gap: 16px; }
+
+        .user-avatar-sm {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: var(--gradient-blue);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 600; font-size: 14px;
+        }
+
+        .btn-logout {
+            padding: 8px 16px; background: transparent;
+            border: 1px solid var(--border); border-radius: 8px;
+            color: var(--text-secondary); font-size: 14px;
+            cursor: pointer; transition: all 0.2s ease;
+        }
+
+        .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+
+        .page-content {
+            padding: 60px 0;
+        }
+
+        .profile-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .avatar-large {
+            width: 120px; height: 120px;
+            border-radius: 50%;
+            background: var(--gradient-blue);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 48px; font-weight: 700;
+            margin: 0 auto 24px;
+            box-shadow: 0 8px 32px rgba(0, 102, 255, 0.3);
+        }
+
+        .user-name {
+            font-size: 32px; font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .membership-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 24px;
+            font-size: 14px; font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .membership-badge.pro {
+            background: var(--gradient-blue);
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 102, 255, 0.3);
+        }
+
+        .membership-badge.enterprise {
+            background: var(--gradient-gold);
+            color: white;
+            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+        }
+
+        .membership-badge.free {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .membership-info {
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+
+        .membership-info strong {
+            color: var(--success);
+        }
+
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .info-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .info-card.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .info-card-title {
+            font-size: 14px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-card-title .icon {
+            font-size: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            width: 120px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .info-value {
+            flex: 1;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .info-value.highlight {
+            color: var(--success);
+            font-family: 'Space Mono', monospace;
+        }
+
+        .info-value.empty {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 40px;
+        }
+
+        .btn {
+            padding: 12px 32px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--gradient-blue);
+            border: none;
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 102, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 102, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary);
+            background: rgba(0, 102, 255, 0.1);
+        }
+
+        .membership-card {
+            background: linear-gradient(135deg, rgba(0, 102, 255, 0.1) 0%, rgba(0, 212, 255, 0.05) 100%);
+            border: 1px solid rgba(0, 102, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .membership-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(0, 102, 255, 0.1) 0%, transparent 70%);
+        }
+
+        .membership-features {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .membership-feature {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .membership-feature .icon {
+            color: var(--success);
+            font-size: 16px;
+        }
+
+        .loading-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(13, 17, 23, 0.9);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 10000;
+        }
+
+        .loading-spinner {
+            width: 60px; height: 60px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-text { margin-top: 20px; font-size: 16px; color: var(--text-secondary); }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .profile-grid { grid-template-columns: 1fr; }
+            .membership-features { grid-template-columns: 1fr; }
+            .action-buttons { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="noise-overlay"></div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">加载中...</div>
+    </div>
+
+    <nav class="navbar">
+        <div class="app-container navbar-content">
+            <div class="logo">
+                <div class="logo-icon">🔭</div>
+                <div class="logo-text">Auto<span>Sight</span></div>
+            </div>
+
+            <div class="nav-links">
+                <a href="/dashboard" class="nav-link">供需看板</a>
+                <a href="/blue-ocean" class="nav-link">蓝海选品</a>
+                <a href="/reports" class="nav-link">数据报表</a>
+                <a href="/profile" class="nav-link active">用户中心</a>
+            </div>
+
+            <div class="user-section">
+                <div class="user-avatar-sm" id="userAvatarTop">王</div>
+                <button class="btn-logout" onclick="logout()">退出登录</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="app-container">
+        <div class="page-content">
+            <div class="profile-header">
+                <div class="avatar-large" id="userAvatar">王</div>
+                <h1 class="user-name" id="userName">加载中...</h1>
+                <div id="membershipBadge"></div>
+                <div class="membership-info" id="membershipInfo"></div>
+            </div>
+
+            <div class="profile-grid">
+                <div class="info-card">
+                    <div class="info-card-title">
+                        <span class="icon">👤</span>
+                        基本信息
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">用户名</div>
+                        <div class="info-value" id="infoUsername">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">电子邮箱</div>
+                        <div class="info-value" id="infoEmail">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">联系电话</div>
+                        <div class="info-value" id="infoPhone">-</div>
+                    </div>
+                </div>
+
+                <div class="info-card membership-card">
+                    <div class="info-card-title">
+                        <span class="icon">💎</span>
+                        会员信息
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">会员等级</div>
+                        <div class="info-value" id="infoLevel">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">剩余天数</div>
+                        <div class="info-value highlight" id="infoDays">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">注册时间</div>
+                        <div class="info-value" id="infoCreated">-</div>
+                    </div>
+
+                    <div class="membership-features" id="membershipFeatures"></div>
+                </div>
+
+                <div class="info-card full-width">
+                    <div class="info-card-title">
+                        <span class="icon">🏢</span>
+                        公司信息
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">公司名称</div>
+                        <div class="info-value" id="infoCompany">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-secondary" onclick="goToDashboard()">
+                    ← 返回首页
+                </button>
+                <button class="btn btn-primary" onclick="upgradeMembership()">
+                    ⭐ 升级会员
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_BASE = '/api';
+
+        function checkAuth() {
+            const token = localStorage.getItem('auth_token');
+            const user = localStorage.getItem('user');
+
+            if (!token || !user) {
+                window.location.href = '/';
+                return false;
+            }
+
+            return true;
+        }
+
+        function getAuthHeaders() {
+            return {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Content-Type': 'application/json'
+            };
+        }
+
+        function loadUserProfile() {
+            fetch(`${API_BASE}/auth/me`, {
+                headers: getAuthHeaders()
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('获取用户信息失败');
+                return res.json();
+            })
+            .then(user => {
+                renderProfile(user);
+            })
+            .catch(error => {
+                console.error('加载错误:', error);
+                alert('加载用户信息失败，请刷新重试');
+            });
+        }
+
+        function renderProfile(user) {
+            document.getElementById('userName').textContent = user.username;
+            document.getElementById('userAvatar').textContent = user.username.charAt(0).toUpperCase();
+            document.getElementById('userAvatarTop').textContent = user.username.charAt(0).toUpperCase();
+            document.getElementById('infoUsername').textContent = user.username;
+            document.getElementById('infoEmail').textContent = user.email || '未设置';
+
+            const phone = user.phone || '未设置';
+            const phoneEl = document.getElementById('infoPhone');
+            phoneEl.textContent = phone;
+            if (!user.phone) {
+                phoneEl.classList.add('empty');
+            }
+
+            const company = user.company_name || '未设置';
+            const companyEl = document.getElementById('infoCompany');
+            companyEl.textContent = company;
+            if (!user.company_name) {
+                companyEl.classList.add('empty');
+            }
+
+            const levelNames = {
+                'free': '免费版',
+                'pro': '专业版',
+                'enterprise': '企业版'
+            };
+
+            const badge = document.getElementById('membershipBadge');
+            badge.innerHTML = `
+                <span class="membership-badge ${user.membership_level}">
+                    ${levelNames[user.membership_level] || '免费版'}
+                </span>
+            `;
+
+            document.getElementById('infoLevel').textContent = levelNames[user.membership_level] || '免费版';
+            document.getElementById('infoDays').textContent = user.membership_days > 0 ? `${user.membership_days} 天` : '已到期';
+
+            const createdDate = new Date(user.created_at);
+            const formattedDate = `${createdDate.getFullYear()}-${String(createdDate.getMonth() + 1).padStart(2, '0')}-${String(createdDate.getDate()).padStart(2, '0')} ${String(createdDate.getHours()).padStart(2, '0')}:${String(createdDate.getMinutes()).padStart(2, '0')}`;
+            document.getElementById('infoCreated').textContent = formattedDate;
+
+            const membershipInfo = document.getElementById('membershipInfo');
+            if (user.membership_level === 'free') {
+                membershipInfo.innerHTML = '当前为免费用户，<strong>升级专业版</strong>解锁更多功能';
+            } else if (user.membership_days > 0) {
+                membershipInfo.innerHTML = `会员剩余 <strong>${user.membership_days} 天</strong>`;
+            } else {
+                membershipInfo.innerHTML = '会员已到期，<strong>续费</strong>继续使用高级功能';
+            }
+
+            renderMembershipFeatures(user.membership_level);
+        }
+
+        function renderMembershipFeatures(level) {
+            const featuresContainer = document.getElementById('membershipFeatures');
+
+            const allFeatures = {
+                free: [
+                    '跟踪10个品类',
+                    '基础供需数据',
+                    '每日数据更新'
+                ],
+                pro: [
+                    '跟踪全部品类',
+                    '蓝海选品推荐',
+                    '品类趋势分析',
+                    '数据导出功能',
+                    '优先级支持'
+                ],
+                enterprise: [
+                    '专业版全部功能',
+                    '团队协作(10人)',
+                    'API数据对接',
+                    '定制化报表',
+                    '专属客户经理'
+                ]
+            };
+
+            const features = allFeatures[level] || allFeatures.free;
+
+            featuresContainer.innerHTML = features.map(f => `
+                <div class="membership-feature">
+                    <span class="icon">✓</span>
+                    <span>${f}</span>
+                </div>
+            `).join('');
+        }
+
+        function goToDashboard() {
+            window.location.href = '/dashboard';
+        }
+
+        function upgradeMembership() {
+            alert('🎉 感谢您对AutoSight的支持！\n\n请联系客服了解升级方案：\n📧 support@autosight.com\n📞 400-888-8888');
+        }
+
+        async function logout() {
+            try {
+                await fetch(`${API_BASE}/auth/logout`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+            } catch (error) {
+                console.error('登出错误:', error);
+            } finally {
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('user');
+                window.location.href = '/';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!checkAuth()) return;
+            loadUserProfile();
+            document.getElementById('loadingOverlay').style.display = 'none';
+        });
+    </script>
+</body>
+</html>
