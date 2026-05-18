@@ -1,0 +1,48 @@
+
+version: '3.8'
+
+services:
+  # 主应用 - Flask后端
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auto-sight-app
+    restart: unless-stopped
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_PATH=/data/autosight.db
+    volumes:
+      - ./data:/data
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Nginx反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: auto-sight-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - app
+    networks:
+      - auto-sight-network
+
+networks:
+  auto-sight-network:
+    driver: bridge
+
+volumes:
+  app-data:
+

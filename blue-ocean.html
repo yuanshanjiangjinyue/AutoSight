@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoSight - 蓝海选品库 | 发现高增长品类机会</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3B82F6;
+            --primary-dark: #2563EB;
+            --primary-light: #60A5FA;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --bg-primary: #0A0F1A;
+            --bg-secondary: #111827;
+            --bg-card: #1F2937;
+            --bg-card-hover: #374151;
+            --text-primary: #FFFFFF;
+            --text-secondary: #9CA3AF;
+            --text-muted: #6B7280;
+            --border: #374151;
+            --border-light: #4B5563;
+            --gradient-primary: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+            --gradient-success: linear-gradient(135deg, #10B981 0%, #059669 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .noise-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 1; opacity: 0.02;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        .navbar {
+            background: rgba(17, 24, 39, 0.98);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 0;
+            position: sticky; top: 0; z-index: 1000;
+        }
+
+        .navbar-container {
+            max-width: 1800px; margin: 0 auto; padding: 0 32px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .logo {
+            display: flex; align-items: center; gap: 12px;
+        }
+
+        .logo-icon {
+            width: 42px; height: 42px;
+            background: var(--gradient-primary);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+
+        .logo-text { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+        .logo-text span { color: var(--primary-light); }
+
+        .nav-links { display: flex; gap: 4px; }
+
+        .nav-link {
+            padding: 10px 20px;
+            border-radius: 10px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px; font-weight: 500;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
+
+        .nav-link.active {
+            background: var(--gradient-success);
+            color: white;
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+        }
+
+        .user-section { display: flex; align-items: center; gap: 16px; }
+
+        .user-info {
+            display: flex; align-items: center; gap: 12px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .user-info:hover { background: var(--bg-card); }
+
+        .user-avatar {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            background: var(--gradient-primary);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 600; font-size: 14px;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .user-name { font-size: 14px; font-weight: 600; }
+
+        .btn-logout {
+            padding: 10px 16px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-logout:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .main-content {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 32px;
+            position: relative; z-index: 10;
+        }
+
+        .page-header {
+            padding: 48px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .page-title {
+            font-size: 42px; font-weight: 800;
+            margin-bottom: 16px;
+            background: var(--gradient-success);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .page-subtitle {
+            font-size: 20px; color: var(--text-secondary);
+            line-height: 1.6;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            margin-bottom: 40px;
+            padding: 24px;
+            background: var(--bg-card);
+            border-radius: 18px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 800;
+            font-family: 'Inter', monospace;
+            color: var(--success);
+            margin-bottom: 6px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filters-bar {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .filter-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .filter-select {
+            padding: 10px 18px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 160px;
+        }
+
+        .filter-select:hover, .filter-select:focus {
+            border-color: var(--success);
+            outline: none;
+        }
+
+        .results-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .results-count {
+            font-size: 15px;
+            color: var(--text-secondary);
+        }
+
+        .results-count strong {
+            color: var(--success);
+            font-family: 'Inter', monospace;
+            font-size: 20px;
+        }
+
+        .sort-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .quick-filters {
+            display: flex;
+            gap: 10px;
+        }
+
+        .quick-filter-btn {
+            padding: 10px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .quick-filter-btn:hover {
+            border-color: var(--success);
+            color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .quick-filter-btn.active {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+
+        .product-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 28px;
+            transition: all 0.35s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .product-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--gradient-success);
+            transform: scaleY(0);
+            transition: transform 0.35s ease;
+        }
+
+        .product-card:hover::before {
+            transform: scaleY(1);
+        }
+
+        .product-card:hover {
+            transform: translateY(-6px);
+            border-color: var(--success);
+            box-shadow: 0 16px 40px rgba(16, 185, 129, 0.18);
+        }
+
+        .product-header {
+            display: flex; justify-content: space-between;
+            align-items: flex-start; margin-bottom: 20px;
+        }
+
+        .product-name {
+            font-size: 20px; font-weight: 700;
+            flex: 1;
+            margin-right: 12px;
+            line-height: 1.3;
+        }
+
+        .product-badges {
+            display: flex; gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .product-badge {
+            padding: 6px 14px;
+            border-radius: 10px;
+            font-size: 12px; font-weight: 600;
+        }
+
+        .product-badge.top { 
+            background: rgba(59, 130, 246, 0.2); 
+            color: var(--primary-light);
+            animation: badgeGlow 2s ease-in-out infinite;
+        }
+        
+        @keyframes badgeGlow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+            50% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+        }
+
+        .product-badge.blue { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .product-badge.new-energy { background: rgba(0, 212, 255, 0.2); color: #00D4FF; }
+        .product-badge.custom { background: rgba(255, 149, 0, 0.2); color: var(--warning); }
+        .product-badge.pet { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+        .product-badge.electronics { background: rgba(102, 51, 153, 0.2); color: #9966CC; }
+        .product-badge.general { background: rgba(139, 148, 158, 0.2); color: var(--text-secondary); }
+
+        .product-metrics {
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            gap: 16px; margin-bottom: 22px;
+        }
+
+        .metric {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            padding: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .product-card:hover .metric {
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-trend {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .metric-trend.up {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .metric-trend.down {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .metric-value {
+            font-family: 'Inter', monospace;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .metric-value.positive { color: var(--success); }
+        .metric-value.neutral { color: var(--text-primary); }
+        .metric-value.warning { color: var(--warning); }
+
+        .product-analysis {
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .analysis-title {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .analysis-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .analysis-text strong {
+            color: var(--success);
+        }
+
+        .product-footer {
+            display: flex; justify-content: space-between;
+            align-items: center;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .product-status {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: statusPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes statusPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.9); }
+        }
+
+        .btn-view {
+            padding: 12px 20px;
+            background: transparent;
+            border: 2px solid var(--success);
+            border-radius: 10px;
+            color: var(--success);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-view:hover {
+            background: var(--success);
+            color: white;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-icon { font-size: 64px; margin-bottom: 20px; }
+        .empty-title { font-size: 24px; font-weight: 600; margin-bottom: 12px; }
+        .empty-text { font-size: 16px; color: var(--text-secondary); }
+
+        .loading-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(10, 15, 26, 0.98);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 10000;
+        }
+
+        .loading-spinner {
+            width: 64px; height: 64px;
+            border: 4px solid var(--border);
+            border-top-color: var(--success);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-text {
+            margin-top: 24px;
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+
+        .cta-section {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(59, 130, 246, 0.08) 100%);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
+        }
+
+        .cta-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .cta-text {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn-cta {
+            padding: 14px 40px;
+            background: var(--gradient-success);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 6px 18px rgba(16, 185, 129, 0.4);
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn-cta:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 28px rgba(16, 185, 129, 0.5);
+        }
+
+        .featured-section {
+            margin-bottom: 40px;
+        }
+
+        .featured-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .featured-title {
+            font-size: 22px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .featured-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .featured-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 20px;
+            padding: 32px;
+            display: flex;
+            gap: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .featured-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 48px rgba(59, 130, 246, 0.2);
+        }
+
+        .featured-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+
+        .featured-content {
+            flex: 1;
+        }
+
+        .featured-name {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .featured-metrics {
+            display: flex;
+            gap: 32px;
+            margin-bottom: 16px;
+        }
+
+        .featured-metric {
+            text-align: center;
+        }
+
+        .featured-metric-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .featured-metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--success);
+            font-family: 'Inter', monospace;
+        }
+
+        .featured-desc {
+            font-size: 15px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .featured-action {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .btn-featured-primary {
+            padding: 12px 24px;
+            background: var(--gradient-primary);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-featured-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+        }
+
+        .btn-featured-secondary {
+            padding: 12px 24px;
+            background: transparent;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-featured-secondary:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        @media (max-width: 1200px) {
+            .stats-bar { gap: 32px; }
+            .stat-value { font-size: 28px; }
+        }
+
+        @media (max-width: 900px) {
+            .stats-bar { flex-wrap: wrap; gap: 24px; }
+            .filters-bar { flex-direction: column; align-items: stretch; }
+            .filter-group { width: 100%; }
+            .filter-select { width: 100%; }
+            .quick-filters { justify-content: flex-start; }
+            .products-grid { grid-template-columns: 1fr; }
+            .featured-card { flex-direction: column; text-align: center; }
+            .featured-metrics { justify-content: center; }
+        }
+
+        @media (max-width: 768px) {
+            .navbar-container { padding: 0 16px; }
+            .nav-links { display: none; }
+            .main-content { padding: 16px; }
+            .page-title { font-size: 32px; }
+            .stats-bar { padding: 16px; }
+            .cta-section { padding: 24px; }
+            .featured-header { flex-direction: column; gap: 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="noise-overlay"></div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">加载中...</div>
+    </div>
+
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="logo">
+                <div class="logo-icon">🚀</div>
+                <span class="logo-text">Auto<span>Sight</span></span>
+            </div>
+
+            <div class="nav-links">
+                <a href="/dashboard" class="nav-link">📊 供需看板</a>
+                <span class="nav-link active">🌊 蓝海选品</span>
+                <a href="/reports" class="nav-link">📋 数据报表</a>
+                <a href="/profile" class="nav-link">👤 用户中心</a>
+            </div>
+
+            <div class="user-section">
+                <div class="user-info" onclick="window.location.href='/profile'">
+                    <div class="user-avatar" id="userAvatar">王</div>
+                    <span class="user-name" id="userName">汽配卖家</span>
+                </div>
+                <button class="btn-logout" onclick="logout()">
+                    <span>📤</span>
+                    <span>退出</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">
+                <span>🌊</span>
+                蓝海选品库
+            </h1>
+            <p class="page-subtitle">
+                基于供需缺口模型，自动筛选高增长、低供给、低竞争的优质赛道，助您抢占市场先机
+            </p>
+        </div>
+
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-value" id="totalCount">0</div>
+                <div class="stat-label">蓝海品类</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">128</div>
+                <div class="stat-label">总品类数</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">5</div>
+                <div class="stat-label">品类类型</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">每日更新</div>
+                <div class="stat-label">数据频率</div>
+            </div>
+        </div>
+
+        <div class="featured-section">
+            <div class="featured-header">
+                <div>
+                    <div class="featured-title">
+                        <span>⭐</span>
+                        今日推荐
+                    </div>
+                    <div class="featured-subtitle">AI智能分析后推荐的最具潜力品类</div>
+                </div>
+            </div>
+            <div class="featured-card" id="featuredCard">
+                <div class="featured-icon">🔋</div>
+                <div class="featured-content">
+                    <div class="featured-name" id="featuredName">加载中...</div>
+                    <div class="featured-metrics">
+                        <div class="featured-metric">
+                            <div class="featured-metric-label">供需缺口</div>
+                            <div class="featured-metric-value" id="featuredGap">--</div>
+                        </div>
+                        <div class="featured-metric">
+                            <div class="featured-metric-label">需求增速</div>
+                            <div class="featured-metric-value" id="featuredDemand">--</div>
+                        </div>
+                        <div class="featured-metric">
+                            <div class="featured-metric-label">CR5指数</div>
+                            <div class="featured-metric-value" id="featuredCr5">--</div>
+                        </div>
+                    </div>
+                    <div class="featured-desc" id="featuredDesc">
+                        基于AI算法分析，该品类当前供需缺口较大，需求持续增长，竞争格局良好，是当前最值得关注的蓝海机会。
+                    </div>
+                    <div class="featured-action">
+                        <button class="btn-featured-primary" id="viewFeaturedBtn">立即查看详情</button>
+                        <button class="btn-featured-secondary">查看更多推荐</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="filters-bar">
+            <div class="filter-group">
+                <span class="filter-label">品类类型：</span>
+                <select class="filter-select" id="typeFilter" onchange="loadBlueOcean()">
+                    <option value="all">全部类型</option>
+                    <option value="new-energy">新能源配件</option>
+                    <option value="custom">定制配饰</option>
+                    <option value="pet">宠物车载</option>
+                    <option value="electronics">电子配件</option>
+                    <option value="general">通用配件</option>
+                </select>
+                <span class="filter-label">排序方式：</span>
+                <select class="filter-select" id="sortFilter" onchange="loadBlueOcean()">
+                    <option value="gap-desc">供需缺口 (高→低)</option>
+                    <option value="demand-desc">需求增速 (高→低)</option>
+                    <option value="supply-asc">供给增速 (低→高)</option>
+                    <option value="cr5-asc">CR5指数 (低→高)</option>
+                </select>
+            </div>
+            <div class="results-info">
+                <div class="results-count">
+                    共找到 <strong id="countDisplay">0</strong> 个蓝海品类
+                </div>
+                <div class="sort-indicator">
+                    <span>📊</span>
+                    <span>数据每日更新</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="quick-filters">
+            <button class="quick-filter-btn active" onclick="filterByStatus('all')">全部</button>
+            <button class="quick-filter-btn" onclick="filterByStatus('top-blue')">顶级蓝海</button>
+            <button class="quick-filter-btn" onclick="filterByStatus('blue')">蓝海</button>
+        </div>
+
+        <div class="products-grid" id="productsGrid">
+            <div class="empty-state">
+                <div class="empty-icon">📦</div>
+                <div class="empty-title">加载中...</div>
+                <div class="empty-text">正在获取蓝海选品数据</div>
+            </div>
+        </div>
+
+        <div class="cta-section">
+            <h3 class="cta-title">找到心仪的品类了吗？</h3>
+            <p class="cta-text">升级专业版，解锁更多高级筛选功能和深度分析报告，让您的选品更精准、更高效！</p>
+            <button class="btn-cta" onclick="upgradeAccount()">立即升级专业版</button>
+        </div>
+    </main>
+
+    <script>
+        const API_BASE = '/api';
+        let currentStatusFilter = 'all';
+
+        function checkAuth() {
+            const token = localStorage.getItem('auth_token');
+            const user = localStorage.getItem('user');
+
+            if (!token || !user) {
+                window.location.href = '/';
+                return false;
+            }
+
+            const userData = JSON.parse(user);
+            document.getElementById('userName').textContent = userData.username;
+            document.getElementById('userAvatar').textContent = userData.username.charAt(0).toUpperCase();
+            return true;
+        }
+
+        function getAuthHeaders() {
+            return {
+                'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                'Content-Type': 'application/json'
+            };
+        }
+
+        function filterByStatus(status) {
+            currentStatusFilter = status;
+            document.querySelectorAll('.quick-filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            loadBlueOcean();
+        }
+
+        function loadBlueOcean() {
+            const type = document.getElementById('typeFilter').value;
+            const sortValue = document.getElementById('sortFilter').value;
+            const [sort, order] = sortValue.split('-');
+
+            const params = new URLSearchParams();
+            params.append('sort', sort);
+            params.append('order', order);
+            if (type !== 'all') params.append('type', type);
+            if (currentStatusFilter !== 'all') params.append('status', currentStatusFilter);
+
+            fetch(`${API_BASE}/blue-ocean?${params}`, {
+                headers: getAuthHeaders()
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('获取数据失败');
+                return res.json();
+            })
+            .then(data => {
+                document.getElementById('totalCount').textContent = data.length;
+                document.getElementById('countDisplay').textContent = data.length;
+                renderProducts(data);
+                loadFeaturedProduct(data);
+            })
+            .catch(error => {
+                console.error('加载错误:', error);
+                document.getElementById('productsGrid').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">❌</div>
+                        <div class="empty-title">加载失败</div>
+                        <div class="empty-text">请刷新页面重试</div>
+                    </div>
+                `;
+            });
+        }
+
+        function loadFeaturedProduct(data) {
+            if (data.length === 0) return;
+            
+            const featured = data[0];
+            document.getElementById('featuredName').textContent = featured.name;
+            document.getElementById('featuredGap').textContent = '+' + featured.gap + '%';
+            document.getElementById('featuredDemand').textContent = '+' + featured.demand_growth + '%';
+            document.getElementById('featuredCr5').textContent = featured.cr5 + '%';
+            document.getElementById('viewFeaturedBtn').onclick = () => viewDetail(featured.id);
+        }
+
+        function renderProducts(products) {
+            const grid = document.getElementById('productsGrid');
+
+            if (products.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔍</div>
+                        <div class="empty-title">没有找到匹配的品类</div>
+                        <div class="empty-text">尝试调整筛选条件</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const tags = {
+                'new-energy': '新能源',
+                'custom': '定制件',
+                'pet': '宠物',
+                'electronics': '电子',
+                'general': '通用'
+            };
+
+            grid.innerHTML = products.map(p => `
+                <div class="product-card" onclick="viewDetail(${p.id})">
+                    <div class="product-header">
+                        <div class="product-name">${p.name}</div>
+                        <div class="product-badges">
+                            <span class="product-badge ${p.category_type}">${tags[p.category_type] || '配件'}</span>
+                            ${p.status === 'top-blue' ? '<span class="product-badge top">顶级蓝海</span>' : '<span class="product-badge blue">蓝海</span>'}
+                        </div>
+                    </div>
+
+                    <div class="product-metrics">
+                        <div class="metric">
+                            <div class="metric-header">
+                                <span class="metric-label">供需缺口</span>
+                                <span class="metric-trend up">↑</span>
+                            </div>
+                            <div class="metric-value positive">+${p.gap}%</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-header">
+                                <span class="metric-label">需求增速</span>
+                                <span class="metric-trend up">↑</span>
+                            </div>
+                            <div class="metric-value positive">+${p.demand_growth}%</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-header">
+                                <span class="metric-label">供给增速</span>
+                                <span class="metric-trend ${p.supply_growth < 20 ? 'up' : 'down'}">${p.supply_growth < 20 ? '↓' : '↑'}</span>
+                            </div>
+                            <div class="metric-value neutral">+${p.supply_growth}%</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-header">
+                                <span class="metric-label">CR5</span>
+                                <span class="metric-trend ${p.cr5 < 30 ? 'up' : 'down'}">${p.cr5 < 30 ? '低' : '高'}</span>
+                            </div>
+                            <div class="metric-value ${p.cr5 < 30 ? 'positive' : p.cr5 < 50 ? 'warning' : 'neutral'}">${p.cr5}%</div>
+                        </div>
+                    </div>
+
+                    <div class="product-analysis">
+                        <div class="analysis-title">
+                            <span>💡</span>
+                            分析建议
+                        </div>
+                        <div class="analysis-text">
+                            ${p.status === 'top-blue' 
+                                ? `该品类为<span>顶级蓝海</span>，供需缺口高达${p.gap}%，需求增速${p.demand_growth}%，CR5仅${p.cr5}%，是当前最佳的市场机会！` 
+                                : `该品类供需缺口${p.gap}%，需求持续增长，竞争格局良好，值得重点关注。`
+                            }
+                        </div>
+                    </div>
+
+                    <div class="product-footer">
+                        <div class="product-status">
+                            <div class="status-dot"></div>
+                            <span>${p.status === 'top-blue' ? '顶级蓝海机会' : '蓝海机会'}</span>
+                        </div>
+                        <button class="btn-view">
+                            <span>查看详情</span>
+                            <span>→</span>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function viewDetail(categoryId) {
+            window.location.href = `/category/${categoryId}`;
+        }
+
+        function upgradeAccount() {
+            alert('🎉 感谢您对AutoSight的支持！\n\n请联系客服了解升级方案：\n📧 support@autosight.com\n📞 400-888-8888');
+        }
+
+        async function logout() {
+            try {
+                await fetch(`${API_BASE}/auth/logout`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+            } catch (error) {
+                console.error('登出错误:', error);
+            } finally {
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('user');
+                window.location.href = '/';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!checkAuth()) return;
+            loadBlueOcean();
+            document.getElementById('loadingOverlay').style.display = 'none';
+        });
+    </script>
+</body>
+</html>

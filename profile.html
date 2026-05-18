@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoSight - 用户中心 | 管理您的账户</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3B82F6;
+            --primary-dark: #2563EB;
+            --primary-light: #60A5FA;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --bg-primary: #0A0F1A;
+            --bg-secondary: #111827;
+            --bg-card: #1F2937;
+            --text-primary: #FFFFFF;
+            --text-secondary: #9CA3AF;
+            --text-muted: #6B7280;
+            --border: #374151;
+            --gradient-primary: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+            --gradient-success: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            --gradient-gold: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .noise-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 1; opacity: 0.02;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        .navbar {
+            background: rgba(17, 24, 39, 0.98);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 0;
+            position: sticky; top: 0; z-index: 1000;
+        }
+
+        .navbar-container {
+            max-width: 1400px; margin: 0 auto; padding: 0 32px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .logo { display: flex; align-items: center; gap: 12px; }
+        .logo-icon {
+            width: 42px; height: 42px;
+            background: var(--gradient-primary);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+        .logo-text { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+        .logo-text span { color: var(--primary-light); }
+
+        .nav-links { display: flex; gap: 4px; }
+        .nav-link {
+            padding: 10px 20px;
+            border-radius: 10px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px; font-weight: 500;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .nav-link:hover { color: var(--text-primary); background: var(--bg-card); }
+        .nav-link.active {
+            background: var(--gradient-success);
+            color: white;
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+        }
+
+        .user-section { display: flex; align-items: center; gap: 16px; }
+        .user-info {
+            display: flex; align-items: center; gap: 12px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+        .user-info:hover { background: var(--bg-card); }
+        .user-avatar {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            background: var(--gradient-primary);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 600; font-size: 14px;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        .user-name { font-size: 14px; font-weight: 600; }
+
+        .btn-logout {
+            padding: 10px 16px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .btn-logout:hover { border-color: var(--danger); color: var(--danger); background: rgba(239, 68, 68, 0.1); }
+
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px;
+            position: relative; z-index: 10;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .page-title {
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .member-badge {
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .member-badge.free {
+            background: rgba(107, 114, 128, 0.2);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .member-badge.pro {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+
+        .member-badge.enterprise {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+
+        .profile-container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 32px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .profile-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            position: relative;
+        }
+
+        .profile-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: var(--gradient-primary);
+            border-radius: 16px 16px 0 0;
+            opacity: 0.15;
+        }
+
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            font-weight: 700;
+            margin: 0 auto 16px;
+            position: relative;
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+            border: 4px solid var(--bg-card);
+        }
+
+        .profile-name {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .profile-email {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .profile-stats {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            font-family: 'Inter', monospace;
+            color: var(--success);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .nav-menu {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .nav-item {
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--primary-light);
+            border-left: 3px solid var(--primary);
+        }
+
+        .nav-item .icon {
+            font-size: 18px;
+        }
+
+        .main-area {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .section-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .section-action {
+            color: var(--primary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .section-action:hover {
+            color: var(--primary-light);
+        }
+
+        .form-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .form-field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-field.full {
+            grid-column: span 2;
+        }
+
+        .form-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .form-input {
+            padding: 12px 16px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .form-textarea {
+            padding: 12px 16px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            min-height: 100px;
+            resize: vertical;
+            transition: all 0.2s ease;
+        }
+
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--gradient-success);
+            color: white;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+        }
+
+        .btn-secondary {
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .pricing-section {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .pricing-card {
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 18px;
+            padding: 32px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .pricing-card.popular {
+            border-color: var(--success);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+        }
+
+        .popular-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 6px 16px;
+            background: var(--gradient-success);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .pricing-name {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .pricing-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        .pricing-price {
+            margin-bottom: 24px;
+        }
+
+        .price-value {
+            font-size: 48px;
+            font-weight: 800;
+            font-family: 'Inter', monospace;
+            line-height: 1;
+        }
+
+        .price-unit {
+            font-size: 16px;
+            color: var(--text-muted);
+            margin-left: 4px;
+        }
+
+        .price-period {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .pricing-features {
+            list-style: none;
+            margin-bottom: 24px;
+        }
+
+        .pricing-feature {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .pricing-feature .check {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(16, 185, 129, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: var(--success);
+        }
+
+        .pricing-feature.disabled {
+            opacity: 0.5;
+        }
+
+        .pricing-feature.disabled .check {
+            background: rgba(107, 114, 128, 0.2);
+            color: var(--text-muted);
+        }
+
+        .btn-pricing {
+            width: 100%;
+            justify-content: center;
+            padding: 14px;
+        }
+
+        .btn-pricing.secondary {
+            background: transparent;
+            border: 2px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .btn-pricing.secondary:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-pricing.primary {
+            background: var(--gradient-success);
+            color: white;
+        }
+
+        .btn-pricing.gold {
+            background: var(--gradient-gold);
+            color: white;
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+        }
+
+        .current-plan {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            background: rgba(16, 185, 129, 0.15);
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--success);
+            margin-bottom: 8px;
+        }
+
+        .billing-info {
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .billing-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+        }
+
+        .billing-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .billing-value {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .billing-value.highlight {
+            color: var(--success);
+        }
+
+        .security-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+
+        .security-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .security-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .security-icon.on {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .security-icon.off {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .security-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .security-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .toggle-switch {
+            width: 50px;
+            height: 28px;
+            border-radius: 14px;
+            background: var(--border);
+            cursor: pointer;
+            position: relative;
+            transition: background 0.2s ease;
+        }
+
+        .toggle-switch.active {
+            background: var(--success);
+        }
+
+        .toggle-switch::before {
+            content: '';
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            transition: transform 0.2s ease;
+        }
+
+        .toggle-switch.active::before {
+            transform: translateX(22px);
+        }
+
+        .activity-list {
+            list-style: none;
+        }
+
+        .activity-item {
+            display: flex;
+            gap: 16px;
+            padding: 16px;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            transition: background 0.2s ease;
+        }
+
+        .activity-item:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .activity-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .activity-icon.login { background: rgba(59, 130, 246, 0.2); color: var(--primary-light); }
+        .activity-icon.search { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .activity-icon.download { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-title {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .activity-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .activity-time {
+            font-size: 12px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .notification-item {
+            display: flex;
+            gap: 16px;
+            padding: 16px;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .notification-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .notification-icon.info { background: rgba(59, 130, 246, 0.2); color: var(--primary-light); }
+        .notification-icon.success { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .notification-icon.warning { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .notification-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .notification-time {
+            font-size: 12px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            background: var(--bg-card);
+            border: 1px solid var(--success);
+            border-radius: 12px;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            z-index: 10001;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast-icon {
+            font-size: 20px;
+        }
+
+        .toast-text {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        @media (max-width: 1024px) {
+            .profile-container {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                order: 2;
+            }
+            .main-area {
+                order: 1;
+            }
+            .pricing-section {
+                grid-template-columns: 1fr;
+            }
+            .form-group {
+                grid-template-columns: 1fr;
+            }
+            .form-field.full {
+                grid-column: span 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .navbar-container { padding: 0 16px; }
+            .nav-links { display: none; }
+            .main-content { padding: 16px; }
+            .page-header { flex-direction: column; gap: 16px; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="noise-overlay"></div>
+
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="logo">
+                <div class="logo-icon">🚀</div>
+                <span class="logo-text">Auto<span>Sight</span></span>
+            </div>
+
+            <div class="nav-links">
+                <a href="/dashboard" class="nav-link">📊 供需看板</a>
+                <a href="/blue-ocean" class="nav-link">🌊 蓝海选品</a>
+                <a href="/reports" class="nav-link">📋 数据报表</a>
+                <span class="nav-link active">👤 用户中心</span>
+            </div>
+
+            <div class="user-section">
+                <div class="user-info" onclick="window.location.href='/profile'">
+                    <div class="user-avatar" id="userAvatar">王</div>
+                    <span class="user-name" id="userName">汽配卖家</span>
+                </div>
+                <button class="btn-logout" onclick="logout()">
+                    <span>📤</span>
+                    <span>退出</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">用户中心</h1>
+            <span class="member-badge free" id="memberBadge">
+                <span>🎯</span>
+                <span>免费版会员</span>
+            </span>
+        </div>
+
+        <div class="profile-container">
+            <aside class="sidebar">
+                <div class="profile-card">
+                    <div class="profile-avatar" id="profileAvatar">王</div>
+                    <div class="profile-name" id="profileName">汽配卖家</div>
+                    <div class="profile-email" id="profileEmail">seller@autosight.com</div>
+                    <div class="profile-stats">
+                        <div class="stat-item">
+                            <div class="stat-value" id="statCategories">12</div>
+                            <div class="stat-label">关注品类</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="statReports">8</div>
+                            <div class="stat-label">生成报表</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="statDays">36</div>
+                            <div class="stat-label">使用天数</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="nav-menu">
+                    <div class="nav-item active" onclick="showSection('account')">
+                        <span class="icon">👤</span>
+                        <span>账户设置</span>
+                    </div>
+                    <div class="nav-item" onclick="showSection('membership')">
+                        <span class="icon">🎖️</span>
+                        <span>会员升级</span>
+                    </div>
+                    <div class="nav-item" onclick="showSection('billing')">
+                        <span class="icon">💳</span>
+                        <span>账单管理</span>
+                    </div>
+                    <div class="nav-item" onclick="showSection('security')">
+                        <span class="icon">🔒</span>
+                        <span>安全设置</span>
+                    </div>
+                    <div class="nav-item" onclick="showSection('activity')">
+                        <span class="icon">📝</span>
+                        <span>活动记录</span>
+                    </div>
+                    <div class="nav-item" onclick="showSection('notifications')">
+                        <span class="icon">🔔</span>
+                        <span>通知设置</span>
+                    </div>
+                </div>
+            </aside>
+
+            <div class="main-area">
+                <div id="section-account" class="section-card">
+                    <div class="section-header">
+                        <span class="section-title">账户设置</span>
+                        <span class="section-action" onclick="resetForm()">重置</span>
+                    </div>
+                    <form id="accountForm" onsubmit="saveAccount(event)">
+                        <div class="form-group">
+                            <div class="form-field">
+                                <label class="form-label">用户名</label>
+                                <input type="text" class="form-input" id="inputName" value="汽配卖家">
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">邮箱地址</label>
+                                <input type="email" class="form-input" id="inputEmail" value="seller@autosight.com">
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">手机号</label>
+                                <input type="tel" class="form-input" id="inputPhone" value="138****8888">
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">公司名称</label>
+                                <input type="text" class="form-input" id="inputCompany" value="XX汽配贸易有限公司">
+                            </div>
+                            <div class="form-field full">
+                                <label class="form-label">简介</label>
+                                <textarea class="form-textarea" id="inputBio">专注汽车配件批发与零售，致力于为客户提供优质产品和服务。</textarea>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 12px; margin-top: 20px;">
+                            <button type="button" class="btn btn-secondary" onclick="resetForm()">取消</button>
+                            <button type="submit" class="btn btn-primary">
+                                <span>💾</span>
+                                <span>保存更改</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="section-membership" class="section-card" style="display: none;">
+                    <div class="section-header">
+                        <span class="section-title">会员升级</span>
+                    </div>
+                    <div class="pricing-section">
+                        <div class="pricing-card">
+                            <div class="pricing-name">免费版</div>
+                            <div class="pricing-desc">适合个人卖家和小型店铺起步</div>
+                            <div class="pricing-price">
+                                <span class="price-value">¥0</span>
+                                <span class="price-unit">/月</span>
+                                <div class="price-period">永久免费</div>
+                            </div>
+                            <ul class="pricing-features">
+                                <li class="pricing-feature"><span class="check">✓</span>基础供需数据查看</li>
+                                <li class="pricing-feature"><span class="check">✓</span>5个蓝海品类推荐</li>
+                                <li class="pricing-feature"><span class="check">✓</span>基础报表导出</li>
+                                <li class="pricing-feature disabled"><span class="check">✗</span>高级筛选功能</li>
+                                <li class="pricing-feature disabled"><span class="check">✗</span>API接口调用</li>
+                                <li class="pricing-feature disabled"><span class="check">✗</span>专属客服支持</li>
+                            </ul>
+                            <button class="btn btn-pricing secondary" disabled>当前套餐</button>
+                        </div>
+
+                        <div class="pricing-card popular">
+                            <div class="popular-badge">推荐</div>
+                            <div class="pricing-name">专业版</div>
+                            <div class="pricing-desc">适合成长型企业和专业卖家</div>
+                            <div class="pricing-price">
+                                <span class="price-value">¥699</span>
+                                <span class="price-unit">/月</span>
+                                <div class="price-period">按年付费享8折优惠</div>
+                            </div>
+                            <ul class="pricing-features">
+                                <li class="pricing-feature"><span class="check">✓</span>全部供需数据</li>
+                                <li class="pricing-feature"><span class="check">✓</span>无限蓝海品类推荐</li>
+                                <li class="pricing-feature"><span class="check">✓</span>高级报表导出</li>
+                                <li class="pricing-feature"><span class="check">✓</span>高级筛选功能</li>
+                                <li class="pricing-feature"><span class="check">✓</span>API接口调用(1000次/月)</li>
+                                <li class="pricing-feature disabled"><span class="check">✗</span>专属客服支持</li>
+                            </ul>
+                            <button class="btn btn-pricing primary" onclick="upgradeTo('pro')">立即升级</button>
+                        </div>
+
+                        <div class="pricing-card">
+                            <div class="pricing-name">企业版</div>
+                            <div class="pricing-desc">适合大型企业和团队协作</div>
+                            <div class="pricing-price">
+                                <span class="price-value">¥1999</span>
+                                <span class="price-unit">/月</span>
+                                <div class="price-period">定制报价请联系销售</div>
+                            </div>
+                            <ul class="pricing-features">
+                                <li class="pricing-feature"><span class="check">✓</span>全部功能</li>
+                                <li class="pricing-feature"><span class="check">✓</span>无限API调用</li>
+                                <li class="pricing-feature"><span class="check">✓</span>定制化报表</li>
+                                <li class="pricing-feature"><span class="check">✓</span>私有部署支持</li>
+                                <li class="pricing-feature"><span class="check">✓</span>专属客户成功经理</li>
+                                <li class="pricing-feature"><span class="check">✓</span>优先技术支持</li>
+                            </ul>
+                            <button class="btn btn-pricing gold" onclick="upgradeTo('enterprise')">联系销售</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="section-billing" class="section-card" style="display: none;">
+                    <div class="section-header">
+                        <span class="section-title">账单管理</span>
+                        <span class="section-action" onclick="viewInvoices()">查看全部账单</span>
+                    </div>
+                    <div class="current-plan">
+                        <span>🎯</span>
+                        <span>当前套餐：免费版</span>
+                    </div>
+                    <div class="billing-info">
+                        <div class="billing-row">
+                            <span class="billing-label">账户余额</span>
+                            <span class="billing-value highlight">¥0.00</span>
+                        </div>
+                        <div class="billing-row">
+                            <span class="billing-label">最近支付</span>
+                            <span class="billing-value">暂无支付记录</span>
+                        </div>
+                        <div class="billing-row">
+                            <span class="billing-label">到期时间</span>
+                            <span class="billing-value">永久有效</span>
+                        </div>
+                        <div class="billing-row">
+                            <span class="billing-label">支付方式</span>
+                            <span class="billing-value">未绑定</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-secondary" onclick="addPaymentMethod()">绑定支付方式</button>
+                        <button class="btn btn-primary" onclick="goToMembership()">升级套餐</button>
+                    </div>
+                </div>
+
+                <div id="section-security" class="section-card" style="display: none;">
+                    <div class="section-header">
+                        <span class="section-title">安全设置</span>
+                    </div>
+                    <div class="security-card">
+                        <div class="security-info">
+                            <div class="security-icon on">🔐</div>
+                            <div>
+                                <div class="security-title">登录密码</div>
+                                <div class="security-desc">当前密码强度：强</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="changePassword()">修改密码</button>
+                    </div>
+                    <div class="security-card">
+                        <div class="security-info">
+                            <div class="security-icon off">📱</div>
+                            <div>
+                                <div class="security-title">双因素认证</div>
+                                <div class="security-desc">增强账户安全性，建议开启</div>
+                            </div>
+                        </div>
+                        <div class="toggle-switch" onclick="toggle2FA()"></div>
+                    </div>
+                    <div class="security-card">
+                        <div class="security-info">
+                            <div class="security-icon off">📧</div>
+                            <div>
+                                <div class="security-title">登录通知</div>
+                                <div class="security-desc">新设备登录时发送邮件通知</div>
+                            </div>
+                        </div>
+                        <div class="toggle-switch active" onclick="toggleLoginAlert()"></div>
+                    </div>
+                    <div class="security-card">
+                        <div class="security-info">
+                            <div class="security-icon on">👥</div>
+                            <div>
+                                <div class="security-title">登录历史</div>
+                                <div class="security-desc">最近登录：今天 10:30，北京</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="viewLoginHistory()">查看详情</button>
+                    </div>
+                </div>
+
+                <div id="section-activity" class="section-card" style="display: none;">
+                    <div class="section-header">
+                        <span class="section-title">活动记录</span>
+                        <span class="section-action" onclick="exportActivity()">导出记录</span>
+                    </div>
+                    <ul class="activity-list">
+                        <li class="activity-item">
+                            <div class="activity-icon login">🔑</div>
+                            <div class="activity-content">
+                                <div class="activity-title">账户登录</div>
+                                <div class="activity-desc">通过密码登录，设备：Chrome浏览器</div>
+                            </div>
+                            <div class="activity-time">今天 10:30</div>
+                        </li>
+                        <li class="activity-item">
+                            <div class="activity-icon search">🔍</div>
+                            <div class="activity-content">
+                                <div class="activity-title">查看蓝海选品</div>
+                                <div class="activity-desc">浏览了新能源汽车充电桩配件详情</div>
+                            </div>
+                            <div class="activity-time">今天 10:25</div>
+                        </li>
+                        <li class="activity-item">
+                            <div class="activity-icon download">📥</div>
+                            <div class="activity-content">
+                                <div class="activity-title">导出报表</div>
+                                <div class="activity-desc">下载了蓝海品类月度报告(CSV)</div>
+                            </div>
+                            <div class="activity-time">昨天 16:45</div>
+                        </li>
+                        <li class="activity-item">
+                            <div class="activity-icon search">🔍</div>
+                            <div class="activity-content">
+                                <div class="activity-title">筛选蓝海品类</div>
+                                <div class="activity-desc">按新能源配件类型筛选</div>
+                            </div>
+                            <div class="activity-time">昨天 14:20</div>
+                        </li>
+                        <li class="activity-item">
+                            <div class="activity-icon login">🔑</div>
+                            <div class="activity-content">
+                                <div class="activity-title">账户登录</div>
+                                <div class="activity-desc">通过密码登录，设备：移动端Safari</div>
+                            </div>
+                            <div class="activity-time">前天 20:15</div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div id="section-notifications" class="section-card" style="display: none;">
+                    <div class="section-header">
+                        <span class="section-title">通知设置</span>
+                    </div>
+                    <div class="notification-item">
+                        <div class="notification-icon info">📊</div>
+                        <div class="notification-content">
+                            <div class="notification-title">蓝海新品类更新</div>
+                            <div class="notification-desc">发现5个新的蓝海品类机会，快来查看！</div>
+                        </div>
+                        <div class="notification-time">今天 09:00</div>
+                    </div>
+                    <div class="notification-item">
+                        <div class="notification-icon success">✅</div>
+                        <div class="notification-content">
+                            <div class="notification-title">周报已生成</div>
+                            <div class="notification-desc">您的每周市场分析报告已准备就绪</div>
+                        </div>
+                        <div class="notification-time">昨天 10:00</div>
+                    </div>
+                    <div class="notification-item">
+                        <div class="notification-icon warning">⚠️</div>
+                        <div class="notification-content">
+                            <div class="notification-title">免费版功能限制</div>
+                            <div class="notification-desc">您的蓝海品类查看次数即将用完，升级专业版解锁全部功能</div>
+                        </div>
+                        <div class="notification-time">3天前</div>
+                    </div>
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+                        <div class="form-group">
+                            <div class="form-field">
+                                <label class="form-label">邮件通知</label>
+                                <div class="toggle-switch active" onclick="toggleEmail()"></div>
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">站内通知</label>
+                                <div class="toggle-switch active" onclick="toggleInApp()"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="toast" id="toast">
+        <span class="toast-icon">✅</span>
+        <span class="toast-text">操作成功！</span>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+
+        function checkAuth() {
+            const token = localStorage.getItem('auth_token');
+            const user = localStorage.getItem('user');
+
+            if (!token || !user) {
+                window.location.href = '/';
+                return false;
+            }
+
+            const userData = JSON.parse(user);
+            document.getElementById('userName').textContent = userData.username;
+            document.getElementById('userAvatar').textContent = userData.username.charAt(0).toUpperCase();
+            document.getElementById('profileName').textContent = userData.username;
+            document.getElementById('profileAvatar').textContent = userData.username.charAt(0).toUpperCase();
+            return true;
+        }
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.querySelector(`.nav-item[onclick="showSection('${sectionId}')"]`).classList.add('active');
+
+            document.querySelectorAll('.section-card').forEach(card => card.style.display = 'none');
+            document.getElementById(`section-${sectionId}`).style.display = 'block';
+        }
+
+        function saveAccount(event) {
+            event.preventDefault();
+            showToast('账户信息已更新！');
+        }
+
+        function resetForm() {
+            document.getElementById('inputName').value = '汽配卖家';
+            document.getElementById('inputEmail').value = 'seller@autosight.com';
+            document.getElementById('inputPhone').value = '138****8888';
+            document.getElementById('inputCompany').value = 'XX汽配贸易有限公司';
+            document.getElementById('inputBio').value = '专注汽车配件批发与零售，致力于为客户提供优质产品和服务。';
+            showToast('表单已重置');
+        }
+
+        function upgradeTo(plan) {
+            const planNames = { pro: '专业版', enterprise: '企业版' };
+            alert(`🎉 感谢您选择升级${planNames[plan]}！\n\n请联系客服完成升级：\n📧 sales@autosight.com\n📞 400-888-8888`);
+        }
+
+        function goToMembership() {
+            showSection('membership');
+        }
+
+        function viewInvoices() {
+            showToast('正在加载账单列表...');
+        }
+
+        function addPaymentMethod() {
+            showToast('支付方式绑定功能开发中');
+        }
+
+        function changePassword() {
+            showToast('密码修改功能开发中');
+        }
+
+        function toggle2FA() {
+            event.target.classList.toggle('active');
+            showToast(event.target.classList.contains('active') ? '双因素认证已开启' : '双因素认证已关闭');
+        }
+
+        function toggleLoginAlert() {
+            event.target.classList.toggle('active');
+            showToast(event.target.classList.contains('active') ? '登录通知已开启' : '登录通知已关闭');
+        }
+
+        function viewLoginHistory() {
+            showToast('正在加载登录历史...');
+        }
+
+        function exportActivity() {
+            showToast('正在导出活动记录...');
+            setTimeout(() => showToast('导出成功！'), 1500);
+        }
+
+        function toggleEmail() {
+            event.target.classList.toggle('active');
+            showToast(event.target.classList.contains('active') ? '邮件通知已开启' : '邮件通知已关闭');
+        }
+
+        function toggleInApp() {
+            event.target.classList.toggle('active');
+            showToast(event.target.classList.contains('active') ? '站内通知已开启' : '站内通知已关闭');
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.querySelector('.toast-text').textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        async function logout() {
+            try {
+                await fetch(`${API_BASE}/auth/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('auth_token'),
+                        'Content-Type': 'application/json'
+                    }
+                });
+            } catch (error) {
+                console.error('登出错误:', error);
+            } finally {
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('user');
+                window.location.href = '/';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!checkAuth()) return;
+        });
+    </script>
+</body>
+</html>
