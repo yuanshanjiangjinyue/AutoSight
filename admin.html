@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoSight - 后台管理</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #3B82F6;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --bg-primary: #0A0F1A;
+            --bg-secondary: #111827;
+            --bg-card: #1F2937;
+            --text-primary: #FFFFFF;
+            --text-secondary: #9CA3AF;
+            --border: #374151;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; display: flex; }
+
+        .sidebar {
+            width: 260px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            padding: 20px 0;
+            position: fixed;
+            height: 100vh;
+        }
+
+        .logo {
+            padding: 0 20px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo span { font-size: 18px; font-weight: 700; }
+        .logo span b { color: var(--primary); }
+
+        .nav-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+        .nav-item.active { background: rgba(59,130,246,0.15); color: var(--primary); border-left: 3px solid var(--primary); }
+
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+            padding: 24px;
+        }
+
+        .page-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+        .page-subtitle { color: var(--text-secondary); font-size: 14px; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .stat-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-value { font-size: 28px; font-weight: 700; margin: 8px 0; }
+        .stat-value.blue { color: var(--primary); }
+        .stat-value.green { color: var(--success); }
+        .stat-value.orange { color: var(--warning); }
+        .stat-value.purple { color: #A78BFA; }
+
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .chart-title { font-size: 14px; font-weight: 600; margin-bottom: 16px; }
+        .chart-container { height: 220px; }
+
+        .table-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            text-align: left;
+            padding: 12px 20px;
+            background: rgba(0,0,0,0.2);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        td { padding: 12px 20px; border-bottom: 1px solid var(--border); font-size: 13px; }
+        tr:hover td { background: rgba(59,130,246,0.08); }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .status-badge.active { background: rgba(16,185,129,0.2); color: var(--success); }
+        .status-badge.free { background: rgba(107,114,128,0.2); color: var(--text-secondary); }
+        .status-badge.pro { background: rgba(16,185,129,0.2); color: var(--success); }
+        .btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+        .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; height: auto; position: relative; }
+            .main-content { margin-left: 0; }
+            .charts-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="logo">
+            <span>🔧</span>
+            <span><b>Admin</b>Sight</span>
+        </div>
+        <div class="nav-item active" onclick="showSection('dashboard')">📊 数据概览</div>
+        <div class="nav-item" onclick="showSection('users')">👥 用户管理</div>
+        <div class="nav-item" onclick="showSection('logs')">📝 操作日志</div>
+        <div class="nav-item" onclick="logout()">🚪 退出登录</div>
+    </aside>
+
+    <main class="main-content">
+        <div id="dashboard" class="section active">
+            <h1 class="page-title">数据概览</h1>
+            <p class="page-subtitle">实时监控平台运营数据</p>
+            
+            <div style="display: flex; gap: 12px; margin-bottom: 20px; align-items: center; flex-wrap: wrap;">
+                <span style="color: var(--text-secondary); font-size: 14px;">筛选用户:</span>
+                <select id="userFilter" style="padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 13px; min-width: 180px;">
+                    <option value="">全部用户</option>
+                </select>
+                <span style="color: var(--text-secondary); font-size: 14px;">时间范围:</span>
+                <input type="date" id="startDate" style="padding: 6px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 13px;">
+                <span style="color: var(--text-secondary); font-size: 14px;">至</span>
+                <input type="date" id="endDate" style="padding: 6px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 13px;">
+                <button onclick="applyDateRange()" style="padding: 6px 14px; background: var(--primary); border: none; border-radius: 6px; color: white; font-size: 13px; cursor: pointer;">应用</button>
+                <button onclick="clearDateRange()" style="padding: 6px 14px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text-secondary); font-size: 13px; cursor: pointer;">清除时间</button>
+                <button onclick="clearFilter()" style="padding: 6px 14px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text-secondary); font-size: 13px; cursor: pointer;">全部清除</button>
+            </div>
+            
+            <div id="filterIndicator" style="display: none; padding: 10px 16px; background: rgba(59,130,246,0.15); border: 1px solid var(--primary); border-radius: 6px; margin-bottom: 16px;">
+                <span style="color: var(--primary); font-size: 13px;">当前筛选: </span>
+                <span id="filterUsername" style="color: var(--text-primary); font-size: 13px; font-weight: 600;"></span>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">总用户数</div>
+                    <div class="stat-value blue" id="totalUsers">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">今日登录</div>
+                    <div class="stat-value green" id="todayLogins">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">平均停留</div>
+                    <div class="stat-value orange" id="avgDuration">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">活跃用户</div>
+                    <div class="stat-value purple" id="activeUsers">-</div>
+                </div>
+            </div>
+
+            <div class="charts-row">
+                <div class="chart-card">
+                    <div class="chart-title">登录趋势</div>
+                    <div class="chart-container"><canvas id="loginChart"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">用户分布</div>
+                    <div class="chart-container"><canvas id="userChart"></canvas></div>
+                </div>
+            </div>
+
+            <div id="behaviorSection" style="display: none;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                    <div style="background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border);">
+                        <h3 style="color: var(--text-primary); margin-bottom: 16px; font-size: 16px;">模块访问统计</h3>
+                        <div id="moduleStats" style="display: flex; flex-direction: column; gap: 10px;"></div>
+                    </div>
+                    
+                    <div style="background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h3 style="color: var(--text-primary); font-size: 16px;">停留时长统计</h3>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <span style="color: var(--text-secondary); font-size: 12px;">模块:</span>
+                                <select id="durationModuleFilter" style="padding: 4px 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); font-size: 11px;">
+                                    <option value="">全部页面</option>
+                                    <option value="dashboard">仪表盘</option>
+                                    <option value="blue_ocean">蓝海选品</option>
+                                    <option value="reports">数据报表</option>
+                                    <option value="profile">用户中心</option>
+                                    <option value="search">搜索功能</option>
+                                    <option value="export">数据导出</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">平均会话时长</span>
+                                <span id="avgSessionDuration" style="color: var(--text-primary); font-weight: 600;">-</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">总停留时长</span>
+                                <span id="totalDuration" style="color: var(--text-primary); font-weight: 600;">-</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">访问次数</span>
+                                <span id="sessionCount" style="color: var(--text-primary); font-weight: 600;">-</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">品类浏览量</span>
+                                <span id="categoryViews" style="color: var(--text-primary); font-weight: 600;">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); margin-top: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="color: var(--text-primary); font-size: 16px;">用户行为路径</h3>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <span style="color: var(--text-secondary); font-size: 14px;">模块筛选:</span>
+                            <select id="moduleFilter" style="padding: 6px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 12px;">
+                                <option value="">全部模块</option>
+                                <option value="login">登录</option>
+                                <option value="view">浏览</option>
+                                <option value="search">搜索</option>
+                                <option value="export">导出</option>
+                                <option value="upgrade">升级</option>
+                                <option value="logout">登出</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="behaviorPath" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="users" class="section">
+            <h1 class="page-title">用户管理</h1>
+            <p class="page-subtitle">管理平台用户</p>
+            
+            <div class="table-section">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>用户名</th><th>邮箱</th><th>等级</th><th>登录次数</th><th>状态</th><th>操作</th></tr>
+                    </thead>
+                    <tbody id="usersTable"></tbody>
+                </table>
+            </div>
+
+            <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000;">
+                <div style="background: var(--bg-card); border-radius: 12px; padding: 24px; width: 400px; max-width: 90%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="color: var(--text-primary); font-size: 18px;">编辑用户</h3>
+                        <button onclick="closeEditModal()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 20px;">&times;</button>
+                    </div>
+                    <form id="editForm">
+                        <input type="hidden" id="editUserId">
+                        <div style="margin-bottom: 16px;">
+                            <label style="display: block; color: var(--text-secondary); font-size: 13px; margin-bottom: 4px;">用户名</label>
+                            <input type="text" id="editUsername" style="width: 100%; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary);">
+                        </div>
+                        <div style="margin-bottom: 16px;">
+                            <label style="display: block; color: var(--text-secondary); font-size: 13px; margin-bottom: 4px;">邮箱</label>
+                            <input type="email" id="editEmail" style="width: 100%; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary);">
+                        </div>
+                        <div style="margin-bottom: 16px;">
+                            <label style="display: block; color: var(--text-secondary); font-size: 13px; margin-bottom: 4px;">会员等级</label>
+                            <select id="editLevel" style="width: 100%; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary);">
+                                <option value="free">免费版</option>
+                                <option value="pro">专业版</option>
+                                <option value="enterprise">企业版</option>
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 16px;">
+                            <label style="display: block; color: var(--text-secondary); font-size: 13px; margin-bottom: 4px;">状态</label>
+                            <select id="editStatus" style="width: 100%; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary);">
+                                <option value="active">启用</option>
+                                <option value="disabled">禁用</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 12px;">
+                            <button type="button" onclick="closeEditModal()" style="flex: 1; padding: 10px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text-secondary); cursor: pointer;">取消</button>
+                            <button type="button" onclick="saveUser()" style="flex: 1; padding: 10px; background: var(--primary); border: none; border-radius: 6px; color: white; cursor: pointer;">保存</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="logs" class="section">
+            <h1 class="page-title">操作日志</h1>
+            <p class="page-subtitle">用户操作记录</p>
+            
+            <div class="table-section">
+                <table>
+                    <thead>
+                        <tr><th>时间</th><th>用户</th><th>操作</th><th>描述</th></tr>
+                    </thead>
+                    <tbody id="logsTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_BASE = '/api';
+        let loginChart, userChart;
+        let currentUserId = null;
+        let currentStartDate = null;
+        let currentEndDate = null;
+
+        function getToken() {
+            return localStorage.getItem('auth_token');
+        }
+
+        function buildUrlWithDateRange(url) {
+            const params = [];
+            if (currentStartDate) {
+                params.push('start_date=' + currentStartDate);
+            }
+            if (currentEndDate) {
+                params.push('end_date=' + currentEndDate);
+            }
+            
+            if (params.length > 0) {
+                if (url.includes('?')) {
+                    return url + '&' + params.join('&');
+                } else {
+                    return url + '?' + params.join('&');
+                }
+            }
+            return url;
+        }
+
+        async function fetchData(url) {
+            const token = getToken();
+            const urlWithDate = buildUrlWithDateRange(url);
+            const response = await fetch(API_BASE + urlWithDate, {
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+            });
+            
+            if (response.status === 401) {
+                window.location.href = '/';
+                return null;
+            }
+            
+            return response.json();
+        }
+
+        async function loadUserFilter() {
+            const users = await fetchData('/admin/users');
+            if (!users) return;
+            
+            const select = document.getElementById('userFilter');
+            users.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.id;
+                option.textContent = user.username;
+                select.appendChild(option);
+            });
+            
+            select.addEventListener('change', function() {
+                currentUserId = this.value || null;
+                document.getElementById('moduleFilter').value = '';
+                loadDashboard();
+            });
+            
+            document.getElementById('moduleFilter').addEventListener('change', function() {
+                if (currentUserId) {
+                    loadUserBehavior();
+                }
+            });
+            
+            document.getElementById('durationModuleFilter').addEventListener('change', function() {
+                if (currentUserId) {
+                    loadUserBehavior();
+                }
+            });
+        }
+
+        async function loadDashboard() {
+            let url = '/admin/analytics';
+            const params = [];
+            
+            if (currentUserId) {
+                params.push('user_id=' + currentUserId);
+            }
+            if (currentStartDate) {
+                params.push('start_date=' + currentStartDate);
+            }
+            if (currentEndDate) {
+                params.push('end_date=' + currentEndDate);
+            }
+            
+            if (params.length > 0) {
+                url += '?' + params.join('&');
+            }
+            
+            const data = await fetchData(url);
+            if (!data) return;
+            
+            document.getElementById('totalUsers').textContent = data.total_users;
+            document.getElementById('todayLogins').textContent = data.today_logins || 0;
+            document.getElementById('avgDuration').textContent = formatDuration(data.avg_duration || 0);
+            document.getElementById('activeUsers').textContent = data.active_sessions || data.today_sessions || 0;
+            
+            // 显示/隐藏筛选指示器
+            const indicator = document.getElementById('filterIndicator');
+            const usernameSpan = document.getElementById('filterUsername');
+            
+            if (data.filtered_user && data.username) {
+                indicator.style.display = 'block';
+                usernameSpan.textContent = data.username;
+            } else {
+                indicator.style.display = 'none';
+            }
+            
+            // 如果筛选了用户，只加载登录趋势图（用户分布无意义）
+            if (currentUserId) {
+                await loadUserCharts();
+                await loadUserBehavior();
+            } else {
+                await loadCharts();
+                document.getElementById('behaviorSection').style.display = 'none';
+            }
+        }
+
+        function clearFilter() {
+            document.getElementById('userFilter').value = '';
+            currentUserId = null;
+            clearDateRange();
+            loadDashboard();
+        }
+
+        function applyDateRange() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (startDate && endDate && startDate > endDate) {
+                alert('开始日期不能大于结束日期');
+                return;
+            }
+            
+            currentStartDate = startDate || null;
+            currentEndDate = endDate || null;
+            
+            // 刷新所有模块
+            loadDashboard();
+            
+            // 如果当前显示的是其他页面，也刷新它们
+            const activeSection = document.querySelector('.section.active');
+            if (activeSection) {
+                const sectionId = activeSection.id;
+                if (sectionId === 'users') {
+                    loadUsers();
+                } else if (sectionId === 'logs') {
+                    loadLogs();
+                }
+            }
+        }
+
+        function clearDateRange() {
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            currentStartDate = null;
+            currentEndDate = null;
+        }
+
+        async function loadUserBehavior() {
+            const moduleFilter = document.getElementById('moduleFilter').value;
+            let url = '/admin/users/' + currentUserId + '/behavior';
+            const params = [];
+            
+            if (moduleFilter) {
+                params.push('module=' + moduleFilter);
+            }
+            if (currentStartDate) {
+                params.push('start_date=' + currentStartDate);
+            }
+            if (currentEndDate) {
+                params.push('end_date=' + currentEndDate);
+            }
+            
+            if (params.length > 0) {
+                url += '?' + params.join('&');
+            }
+            
+            const behavior = await fetchData(url);
+            if (!behavior) return;
+            
+            document.getElementById('behaviorSection').style.display = 'block';
+            
+            // 页面模块访问统计（带时长）
+            const moduleStats = document.getElementById('moduleStats');
+            moduleStats.innerHTML = '';
+            
+            if (behavior.page_duration_stats) {
+                for (const [pageKey, stats] of Object.entries(behavior.page_duration_stats)) {
+                    const div = document.createElement('div');
+                    div.style.display = 'flex';
+                    div.style.justifyContent = 'space-between';
+                    div.style.padding = '8px 12px';
+                    div.style.background = 'rgba(59,130,246,0.1)';
+                    div.style.borderRadius = '6px';
+                    div.innerHTML = `<span style="color: var(--text-secondary);">${stats.icon} ${stats.name}</span><span style="color: var(--text-primary); font-weight: 600;">${stats.count}次 · ${formatDuration(stats.avg_duration)}</span>`;
+                    moduleStats.appendChild(div);
+                }
+            }
+            
+            // 停留时长统计（支持页面模块筛选）
+            const durationModuleFilter = document.getElementById('durationModuleFilter').value;
+            
+            if (durationModuleFilter && behavior.page_duration_stats && behavior.page_duration_stats[durationModuleFilter]) {
+                const pageStats = behavior.page_duration_stats[durationModuleFilter];
+                document.getElementById('avgSessionDuration').textContent = formatDuration(pageStats.avg_duration);
+                document.getElementById('totalDuration').textContent = formatDuration(pageStats.total_duration);
+                document.getElementById('sessionCount').textContent = pageStats.count;
+                document.getElementById('categoryViews').textContent = '-';
+            } else {
+                document.getElementById('avgSessionDuration').textContent = formatDuration(Math.round(behavior.total_page_duration / behavior.total_page_count) || 0);
+                document.getElementById('totalDuration').textContent = formatDuration(behavior.total_page_duration || 0);
+                document.getElementById('sessionCount').textContent = behavior.total_page_count || 0;
+                document.getElementById('categoryViews').textContent = behavior.category_views;
+            }
+            
+            // 行为路径
+            const behaviorPath = document.getElementById('behaviorPath');
+            behaviorPath.innerHTML = '';
+            
+            if (behavior.behavior_path && behavior.behavior_path.length > 0) {
+                behavior.behavior_path.forEach((action, index) => {
+                    const div = document.createElement('div');
+                    div.style.display = 'flex';
+                    div.style.alignItems = 'center';
+                    div.style.gap = '12px';
+                    div.style.padding = '10px 12px';
+                    div.style.background = index === 0 ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.05)';
+                    div.style.borderRadius = '6px';
+                    
+                    const typeColors = {
+                        'login': '#10B981',
+                        'view': '#3B82F6',
+                        'search': '#F59E0B',
+                        'export': '#8B5CF6',
+                        'upgrade': '#EC4899',
+                        'logout': '#EF4444'
+                    };
+                    
+                    div.innerHTML = `
+                        <span style="width: 20px; height: 20px; border-radius: 50%; background: ${typeColors[action.type] || '#6B7280'}; display: flex; align-items: center; justify-content: center; font-size: 10px; color: white;">${index + 1}</span>
+                        <div style="flex: 1;">
+                            <div style="display: flex; gap: 8px;">
+                                <span style="color: ${typeColors[action.type] || '#6B7280'}; font-weight: 500;">${action.label}</span>
+                                <span style="color: var(--text-secondary); font-size: 12px;">${action.time}</span>
+                            </div>
+                            <div style="color: var(--text-secondary); font-size: 13px; margin-top: 2px;">${action.description}</div>
+                        </div>
+                    `;
+                    behaviorPath.appendChild(div);
+                });
+            } else {
+                behaviorPath.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px;">暂无行为数据</div>';
+            }
+        }
+
+        async function loadCharts() {
+            const data = await fetchData('/admin/analytics/daily');
+            if (!data) return;
+
+            // 登录趋势图
+            const hours = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'];
+            const loginValues = hours.map(h => {
+                const item = (data.hourly_logins || []).find(d => parseInt(d.hour) === parseInt(h.split(':')[0]));
+                return item ? item.count : 0;
+            });
+
+            loginChart = new Chart(document.getElementById('loginChart'), {
+                type: 'line',
+                data: { labels: hours, datasets: [{ data: loginValues, borderColor: '#3B82F6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+
+            // 用户分布图
+            const levelData = data.level_distribution || [];
+            const labels = [];
+            const values = [];
+            const colors = [];
+            
+            const levelMap = { free: '免费版', pro: '专业版', enterprise: '企业版' };
+            const colorMap = { free: '#6B7280', pro: '#10B981', enterprise: '#F59E0B' };
+            
+            ['free', 'pro', 'enterprise'].forEach(level => {
+                const item = levelData.find(d => d.membership_level === level);
+                if (item) {
+                    labels.push(levelMap[level]);
+                    values.push(item.count);
+                    colors.push(colorMap[level]);
+                }
+            });
+
+            userChart = new Chart(document.getElementById('userChart'), {
+                type: 'doughnut',
+                data: { labels, datasets: [{ data: values, backgroundColor: colors }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '60%' }
+            });
+        }
+
+        async function loadUsers() {
+            const users = await fetchData('/admin/users');
+            if (!users) return;
+
+            const table = document.getElementById('usersTable');
+            let html = '';
+            
+            for (const user of users) {
+                const stats = await fetchData('/admin/users/' + user.id + '/stats');
+                const loginCount = stats?.login_count || 0;
+                const levelClass = user.membership_level;
+                const levelText = user.membership_level === 'free' ? '免费版' : user.membership_level === 'pro' ? '专业版' : '企业版';
+                const statusText = user.status === 'disabled' ? '禁用' : '启用';
+                const statusClass = user.status === 'disabled' ? 'disabled' : 'active';
+                
+                html += `<tr>
+                    <td>${user.id}</td>
+                    <td>${user.username}</td>
+                    <td>${user.email || '-'}</td>
+                    <td><span class="status-badge ${levelClass}">${levelText}</span></td>
+                    <td>${loginCount}</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td>
+                        <button onclick="editUser(${user.id})" style="padding: 4px 8px; background: var(--primary); border: none; border-radius: 4px; color: white; font-size: 12px; cursor: pointer; margin-right: 4px;">编辑</button>
+                        <button onclick="deleteUser(${user.id})" style="padding: 4px 8px; background: #EF4444; border: none; border-radius: 4px; color: white; font-size: 12px; cursor: pointer;">删除</button>
+                    </td>
+                </tr>`;
+            }
+            
+            table.innerHTML = html;
+        }
+
+        async function editUser(userId) {
+            const user = await fetchData('/admin/users/' + userId);
+            if (!user) return;
+            
+            document.getElementById('editUserId').value = user.id;
+            document.getElementById('editUsername').value = user.username;
+            document.getElementById('editEmail').value = user.email || '';
+            document.getElementById('editLevel').value = user.membership_level;
+            document.getElementById('editStatus').value = user.status || 'active';
+            
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        async function saveUser() {
+            const userId = document.getElementById('editUserId').value;
+            const data = {
+                username: document.getElementById('editUsername').value,
+                email: document.getElementById('editEmail').value,
+                membership_level: document.getElementById('editLevel').value,
+                status: document.getElementById('editStatus').value
+            };
+            
+            const token = getToken();
+            const response = await fetch(API_BASE + '/admin/users/' + userId, {
+                method: 'PUT',
+                headers: { 
+                    'Authorization': 'Bearer ' + token, 
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+                alert('保存成功');
+                closeEditModal();
+                loadUsers();
+            } else {
+                alert('保存失败');
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('确定要删除这个用户吗？')) return;
+            
+            const token = getToken();
+            const response = await fetch(API_BASE + '/admin/users/' + userId, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            
+            if (response.ok) {
+                alert('删除成功');
+                loadUsers();
+            } else {
+                alert('删除失败');
+            }
+        }
+
+        async function loadUserCharts() {
+            const history = await fetchData('/admin/users/' + currentUserId + '/login-history');
+            if (!history) return;
+
+            // 用户登录历史图
+            const dates = {};
+            history.forEach(session => {
+                const date = session.login_time?.split(' ')[0];
+                if (date) {
+                    dates[date] = (dates[date] || 0) + 1;
+                }
+            });
+
+            const sortedDates = Object.keys(dates).sort().slice(-7);
+            const values = sortedDates.map(date => dates[date]);
+
+            if (loginChart) loginChart.destroy();
+            loginChart = new Chart(document.getElementById('loginChart'), {
+                type: 'line',
+                data: { labels: sortedDates, datasets: [{ data: values, borderColor: '#3B82F6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+
+            // 用户分布图显示用户等级
+            const user = await fetchData('/admin/users/' + currentUserId);
+            if (user) {
+                const levelText = user.membership_level === 'free' ? '免费版' : user.membership_level === 'pro' ? '专业版' : '企业版';
+                const colors = user.membership_level === 'free' ? ['#6B7280'] : user.membership_level === 'pro' ? ['#10B981'] : ['#F59E0B'];
+                
+                if (userChart) userChart.destroy();
+                userChart = new Chart(document.getElementById('userChart'), {
+                    type: 'doughnut',
+                    data: { labels: [levelText], datasets: [{ data: [1], backgroundColor: colors }] },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '60%' }
+                });
+            }
+        }
+
+        async function loadLogs() {
+            const logs = await fetchData('/admin/logs');
+            if (!logs) return;
+
+            const table = document.getElementById('logsTable');
+            let html = '';
+            
+            const typeMap = { login: '登录', view: '浏览', search: '搜索', export: '导出', upgrade: '升级', logout: '登出' };
+            
+            for (const log of logs.slice(0, 20)) {
+                html += `<tr>
+                    <td>${log.created_at?.slice(0, 19) || '-'}</td>
+                    <td>${log.username}</td>
+                    <td>${typeMap[log.operation_type] || log.operation_type}</td>
+                    <td>${log.description}</td>
+                </tr>`;
+            }
+            
+            table.innerHTML = html;
+        }
+
+        function showSection(id) {
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(id).classList.add('active');
+            
+            if (id === 'dashboard') loadDashboard();
+            if (id === 'users') loadUsers();
+            if (id === 'logs') loadLogs();
+        }
+
+        function formatDuration(seconds) {
+            if (seconds < 60) return '<1分钟';
+            if (seconds < 3600) return Math.floor(seconds / 60) + '分钟';
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            return h + '小时' + (m > 0 ? m + '分钟' : '');
+        }
+
+        function logout() {
+            localStorage.removeItem('auth_token');
+            window.location.href = '/';
+        }
+
+        // 页面加载时检查登录状态并加载数据
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!getToken()) {
+                window.location.href = '/';
+                return;
+            }
+            loadUserFilter();
+            loadDashboard();
+        });
+    </script>
+</body>
+</html>

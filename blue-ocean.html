@@ -237,6 +237,32 @@
             outline: none;
         }
 
+        .filter-input {
+            padding: 10px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            width: 120px;
+            transition: all 0.2s ease;
+        }
+
+        .filter-input:hover, .filter-input:focus {
+            border-color: var(--success);
+            outline: none;
+        }
+
+        .range-inputs {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .range-separator {
+            color: var(--text-muted);
+        }
+
         .results-info {
             display: flex;
             align-items: center;
@@ -289,6 +315,57 @@
             background: rgba(16, 185, 129, 0.2);
             border-color: var(--success);
             color: var(--success);
+        }
+
+        .advanced-filters {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            align-items: flex-start;
+        }
+
+        .advanced-filter-section {
+            min-width: 200px;
+        }
+
+        .advanced-filter-title {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .btn-apply-filters {
+            padding: 12px 24px;
+            background: var(--gradient-success);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 20px;
+        }
+
+        .btn-reset-filters {
+            padding: 12px 24px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 20px;
+            margin-left: 12px;
         }
 
         .products-grid {
@@ -427,6 +504,33 @@
         .metric-value.positive { color: var(--success); }
         .metric-value.neutral { color: var(--text-primary); }
         .metric-value.warning { color: var(--warning); }
+
+        .product-scores {
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            gap: 12px; margin-bottom: 18px;
+        }
+
+        .score-item {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.15);
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .score-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .score-value {
+            font-family: 'Inter', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
 
         .product-analysis {
             background: rgba(59, 130, 246, 0.08);
@@ -849,7 +953,7 @@
                     </div>
                     <div class="featured-action">
                         <button class="btn-featured-primary" id="viewFeaturedBtn">立即查看详情</button>
-                        <button class="btn-featured-secondary">查看更多推荐</button>
+                        <button class="btn-featured-secondary" onclick="showMoreRecommendations()">查看更多推荐</button>
                     </div>
                 </div>
             </div>
@@ -891,6 +995,49 @@
             <button class="quick-filter-btn" onclick="filterByStatus('blue')">蓝海</button>
         </div>
 
+        <div class="advanced-filters" id="advancedFilters">
+            <div class="advanced-filter-section">
+                <div class="advanced-filter-title">🔍 关键词搜索</div>
+                <input type="text" class="filter-input" id="keywordInput" placeholder="搜索品类名称..." onkeyup="handleKeywordSearch()">
+            </div>
+            <div class="advanced-filter-section">
+                <div class="advanced-filter-title">📈 供需缺口</div>
+                <div class="range-inputs">
+                    <input type="number" class="filter-input" id="minGap" placeholder="最小值" min="0" max="100">
+                    <span class="range-separator">-</span>
+                    <input type="number" class="filter-input" id="maxGap" placeholder="最大值" min="0" max="100">
+                </div>
+            </div>
+            <div class="advanced-filter-section">
+                <div class="advanced-filter-title">📊 需求增速 (%)</div>
+                <div class="range-inputs">
+                    <input type="number" class="filter-input" id="minDemand" placeholder="最小值" min="0" max="200">
+                    <span class="range-separator">-</span>
+                    <input type="number" class="filter-input" id="maxDemand" placeholder="最大值" min="0" max="200">
+                </div>
+            </div>
+            <div class="advanced-filter-section">
+                <div class="advanced-filter-title">📉 供给增速 (%)</div>
+                <div class="range-inputs">
+                    <input type="number" class="filter-input" id="minSupply" placeholder="最小值" min="0" max="100">
+                    <span class="range-separator">-</span>
+                    <input type="number" class="filter-input" id="maxSupply" placeholder="最大值" min="0" max="100">
+                </div>
+            </div>
+            <div class="advanced-filter-section">
+                <div class="advanced-filter-title">🏢 CR5指数 (%)</div>
+                <div class="range-inputs">
+                    <input type="number" class="filter-input" id="minCr5" placeholder="最小值" min="0" max="100">
+                    <span class="range-separator">-</span>
+                    <input type="number" class="filter-input" id="maxCr5" placeholder="最大值" min="0" max="100">
+                </div>
+            </div>
+            <div style="margin-top: 20px;">
+                <button class="btn-apply-filters" onclick="applyAdvancedFilters()">应用筛选</button>
+                <button class="btn-reset-filters" onclick="resetAdvancedFilters()">重置</button>
+            </div>
+        </div>
+
         <div class="products-grid" id="productsGrid">
             <div class="empty-state">
                 <div class="empty-icon">📦</div>
@@ -909,6 +1056,7 @@
     <script>
         const API_BASE = '/api';
         let currentStatusFilter = 'all';
+        let currentFilters = {};
 
         function checkAuth() {
             const token = localStorage.getItem('auth_token');
@@ -949,6 +1097,17 @@
             params.append('order', order);
             if (type !== 'all') params.append('type', type);
             if (currentStatusFilter !== 'all') params.append('status', currentStatusFilter);
+            
+            // 添加高级筛选参数
+            if (currentFilters.keyword) params.append('keyword', currentFilters.keyword);
+            if (currentFilters.minGap !== undefined) params.append('min_gap', currentFilters.minGap);
+            if (currentFilters.maxGap !== undefined) params.append('max_gap', currentFilters.maxGap);
+            if (currentFilters.minDemand !== undefined) params.append('min_demand', currentFilters.minDemand);
+            if (currentFilters.maxDemand !== undefined) params.append('max_demand', currentFilters.maxDemand);
+            if (currentFilters.minSupply !== undefined) params.append('min_supply', currentFilters.minSupply);
+            if (currentFilters.maxSupply !== undefined) params.append('max_supply', currentFilters.maxSupply);
+            if (currentFilters.minCr5 !== undefined) params.append('min_cr5', currentFilters.minCr5);
+            if (currentFilters.maxCr5 !== undefined) params.append('max_cr5', currentFilters.maxCr5);
 
             fetch(`${API_BASE}/blue-ocean?${params}`, {
                 headers: getAuthHeaders()
@@ -1008,7 +1167,16 @@
                 'general': '通用'
             };
 
-            grid.innerHTML = products.map(p => `
+            grid.innerHTML = products.map(p => {
+                const compScore = p.competition_score || calculateCompetitionScore(p.cr5, p.supply_growth);
+                const profitScore = p.profit_score || calculateProfitScore(p.gap, p.demand_growth, p.cr5);
+                const estSales = p.estimated_sales || estimateSales(p.demand_growth, p.gap);
+                const estRevenue = p.estimated_revenue || estimateRevenue(estSales, p.gap);
+                
+                const compColor = compScore < 30 ? 'positive' : compScore < 60 ? 'warning' : 'neutral';
+                const profitColor = profitScore >= 70 ? 'positive' : profitScore >= 40 ? 'warning' : 'neutral';
+                
+                return `
                 <div class="product-card" onclick="viewDetail(${p.id})">
                     <div class="product-header">
                         <div class="product-name">${p.name}</div>
@@ -1049,6 +1217,25 @@
                         </div>
                     </div>
 
+                    <div class="product-scores">
+                        <div class="score-item">
+                            <div class="score-label">预估销量/月</div>
+                            <div class="score-value">${estSales.toLocaleString()}</div>
+                        </div>
+                        <div class="score-item">
+                            <div class="score-label">预估收入$/月</div>
+                            <div class="score-value">${estRevenue.toLocaleString()}</div>
+                        </div>
+                        <div class="score-item">
+                            <div class="score-label">竞争难度</div>
+                            <div class="score-value ${compColor}">${compScore}分</div>
+                        </div>
+                        <div class="score-item">
+                            <div class="score-label">利润潜力</div>
+                            <div class="score-value ${profitColor}">${profitScore}分</div>
+                        </div>
+                    </div>
+
                     <div class="product-analysis">
                         <div class="analysis-title">
                             <span>💡</span>
@@ -1067,17 +1254,85 @@
                             <div class="status-dot"></div>
                             <span>${p.status === 'top-blue' ? '顶级蓝海机会' : '蓝海机会'}</span>
                         </div>
-                        <button class="btn-view">
+                        <button class="btn-view" onclick="viewDetail(${p.id})">
                             <span>查看详情</span>
                             <span>→</span>
                         </button>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         function viewDetail(categoryId) {
             window.location.href = `/category/${categoryId}`;
+        }
+
+        function handleKeywordSearch() {
+            const keyword = document.getElementById('keywordInput').value;
+            if (keyword.length >= 2 || keyword.length === 0) {
+                currentFilters.keyword = keyword || null;
+                loadBlueOcean();
+            }
+        }
+
+        function applyAdvancedFilters() {
+            currentFilters = {
+                keyword: document.getElementById('keywordInput').value || null,
+                minGap: parseFloat(document.getElementById('minGap').value) || undefined,
+                maxGap: parseFloat(document.getElementById('maxGap').value) || undefined,
+                minDemand: parseFloat(document.getElementById('minDemand').value) || undefined,
+                maxDemand: parseFloat(document.getElementById('maxDemand').value) || undefined,
+                minSupply: parseFloat(document.getElementById('minSupply').value) || undefined,
+                maxSupply: parseFloat(document.getElementById('maxSupply').value) || undefined,
+                minCr5: parseFloat(document.getElementById('minCr5').value) || undefined,
+                maxCr5: parseFloat(document.getElementById('maxCr5').value) || undefined
+            };
+            loadBlueOcean();
+        }
+
+        function resetAdvancedFilters() {
+            document.getElementById('keywordInput').value = '';
+            document.getElementById('minGap').value = '';
+            document.getElementById('maxGap').value = '';
+            document.getElementById('minDemand').value = '';
+            document.getElementById('maxDemand').value = '';
+            document.getElementById('minSupply').value = '';
+            document.getElementById('maxSupply').value = '';
+            document.getElementById('minCr5').value = '';
+            document.getElementById('maxCr5').value = '';
+            currentFilters = {};
+            loadBlueOcean();
+        }
+
+        // 前端计算函数（作为后端数据的备用）
+        function calculateCompetitionScore(cr5, supplyGrowth) {
+            const cr5Score = Math.min(cr5, 100);
+            const supplyScore = Math.min(supplyGrowth, 100);
+            return Math.max(0, Math.min(100, Math.round((cr5Score * 0.6) + (supplyScore * 0.4))));
+        }
+
+        function calculateProfitScore(gap, demandGrowth, cr5) {
+            const gapScore = Math.min(gap * 1.5, 50);
+            const demandScore = Math.min(demandGrowth * 0.8, 30);
+            const cr5Score = Math.max((100 - cr5) * 0.2, 0);
+            return Math.min(100, Math.round(gapScore + demandScore + cr5Score));
+        }
+
+        function estimateSales(demandGrowth, gap) {
+            const baseSales = 1000;
+            const demandFactor = 1 + (demandGrowth / 100);
+            const gapFactor = 1 + (gap / 100);
+            return Math.max(500, Math.min(50000, Math.round(baseSales * demandFactor * gapFactor)));
+        }
+
+        function estimateRevenue(sales, gap) {
+            const avgPrice = 25 + (gap * 0.5);
+            return Math.round(sales * avgPrice * 0.6);
+        }
+
+        function showMoreRecommendations() {
+            document.querySelector('.products-grid').scrollIntoView({ behavior: 'smooth' });
         }
 
         function upgradeAccount() {

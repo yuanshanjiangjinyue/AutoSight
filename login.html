@@ -759,6 +759,13 @@
                     <span class="trust-text">数据准确</span>
                 </div>
             </div>
+
+            <div style="margin-top: 24px; text-align: center;">
+                <button id="adminLoginBtn" class="btn-secondary" style="padding: 10px 20px; font-size: 13px;">
+                    <span>🔧</span>
+                    <span>管理员登录</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -847,6 +854,52 @@
             } catch (error) {
                 console.error('注册错误:', error);
                 showAlert('网络错误，请检查服务器是否启动');
+            }
+        });
+
+        document.getElementById('adminLoginBtn').addEventListener('click', async () => {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const adminBtn = document.getElementById('adminLoginBtn');
+            
+            if (!username || !password) {
+                showAlert('请先填写用户名和密码');
+                return;
+            }
+
+            adminBtn.disabled = true;
+            adminBtn.innerHTML = '<span class="loading"></span>登录中...';
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem('auth_token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    console.log('Token saved:', data.token);
+                    console.log('User saved:', data.user);
+                    
+                    showAlert('管理员登录成功！正在跳转...', 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = '/admin';
+                    }, 1500);
+                } else {
+                    showAlert(data.error || '管理员登录失败');
+                }
+            } catch (error) {
+                console.error('管理员登录错误:', error);
+                showAlert('网络错误，请检查服务器是否启动');
+            } finally {
+                adminBtn.disabled = false;
+                adminBtn.innerHTML = '<span>🔧</span><span>管理员登录</span>';
             }
         });
 

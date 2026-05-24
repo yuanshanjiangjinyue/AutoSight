@@ -11,6 +11,7 @@ import secrets
 from datetime import datetime, timedelta
 import os
 import json
+from functools import wraps
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
@@ -37,7 +38,9 @@ def init_db():
             membership_level TEXT DEFAULT 'free',
             membership_days INTEGER DEFAULT 0,
             permissions TEXT DEFAULT '["dashboard"]',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            status TEXT DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     
@@ -56,6 +59,12 @@ def init_db():
     except: pass
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT '[\"dashboard\"]'")
+    except: pass
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'")
+    except: pass
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     except: pass
     
     # 认证Token表
@@ -135,12 +144,41 @@ def init_db():
         )
     ''')
     
+    # 操作日志表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS operation_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            username TEXT NOT NULL,
+            operation_type TEXT NOT NULL,
+            description TEXT,
+            ip_address TEXT,
+            device_info TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    ''')
+    
+    # 用户会话表（记录登录时间和停留时长）
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            login_time TIMESTAMP NOT NULL,
+            logout_time TIMESTAMP,
+            duration INTEGER DEFAULT 0,
+            ip_address TEXT,
+            device_info TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    ''')
+    
     # Mock用户数据（密码都是123456）
     # 权限说明：admin=所有权限，test_user=只有dashboard权限
     mock_users = [
         ('admin', hashlib.sha256('123456'.encode()).hexdigest(), 
          'admin@autosight.com', '138-0013-8000', 'AutoSight科技有限公司', 
-         'pro', 180, '["dashboard","blue_ocean","reports","profile"]'),
+         'pro', 180, '["dashboard","blue_ocean","reports","profile","admin"]'),
         ('test_user', hashlib.sha256('123456'.encode()).hexdigest(), 
          'test@autosight.com', '139-1234-5678', '跨境汽配贸易有限公司', 
          'pro', 90, '["dashboard"]'),
@@ -213,6 +251,63 @@ def init_db():
             VALUES (?, ?, ?, ?)
         ''', trend_data)
     
+    # Mock操作日志数据
+    cursor.execute('SELECT COUNT(*) FROM operation_logs')
+    if cursor.fetchone()[0] == 0:
+        import random
+        import datetime
+        
+        operation_types = ['login', 'view', 'search', 'export', 'upgrade', 'logout']
+        descriptions = {
+            'login': '用户登录成功',
+            'view': ['查看蓝海选品列表', '查看品类详情', '查看仪表盘', '查看数据报表'],
+            'search': ['搜索新能源配件', '筛选蓝海品类', '搜索特斯拉配件', '搜索宠物车载'],
+            'export': ['导出蓝海品类报告', '导出数据报表', '导出趋势分析'],
+            'upgrade': '升级到专业版',
+            'logout': '用户登出'
+        }
+        devices = ['Chrome Windows', 'Chrome Mac', 'Safari Mac', 'Mobile Safari', 'Firefox Windows', 'Edge Windows']
+        ips = ['192.168.1.100', '192.168.1.101', '192.168.1.102', '192.168.1.103', '192.168.1.104', '192.168.1.105']
+        usernames = ['admin', 'test_user', 'xiaowang']
+        
+        logs = []
+        base_time = datetime.datetime.now()
+        
+        for day_offset in range(7):
+            for hour_offset in range(24):
+                if random.random() > 0.6:
+                    user_id = random.randint(1, 3)
+                    op_type = random.choice(operation_types)
+                    desc = descriptions[op_type]
+                    if isinstance(desc, list):
+                        desc = random.choice(desc)
+                    log_time = base_time - datetime.timedelta(days=day_offset, hours=hour_offset)
+                    logs.append((user_id, usernames[user_id-1], op_type, desc, random.choice(ips), random.choice(devices), log_time))
+        
+        cursor.executemany('''
+            INSERT INTO operation_logs (user_id, username, operation_type, description, ip_address, device_info, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', logs)
+    
+    # Mock用户会话数据
+    cursor.execute('SELECT COUNT(*) FROM user_sessions')
+    if cursor.fetchone()[0] == 0:
+        sessions = []
+        base_time = datetime.datetime.now()
+        
+        for day_offset in range(7):
+            for _ in range(random.randint(20, 40)):
+                user_id = random.randint(1, 3)
+                login_time = base_time - datetime.timedelta(days=day_offset, hours=random.randint(0, 23), minutes=random.randint(0, 59))
+                duration = random.randint(60, 3600)
+                logout_time = login_time + datetime.timedelta(seconds=duration)
+                sessions.append((user_id, login_time, logout_time, duration, random.choice(ips), random.choice(devices)))
+        
+        cursor.executemany('''
+            INSERT INTO user_sessions (user_id, login_time, logout_time, duration, ip_address, device_info)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', sessions)
+    
     conn.commit()
     conn.close()
 
@@ -240,6 +335,122 @@ def generate_token():
 def hash_password(password):
     """密码哈希"""
     return hashlib.sha256(password.encode()).hexdigest()
+
+
+def log_operation(user_id, username, operation_type, description=''):
+    """记录用户操作日志"""
+    try:
+        db = get_db()
+        ip_address = request.remote_addr if hasattr(request, 'remote_addr') else None
+        user_agent = request.headers.get('User-Agent') if hasattr(request, 'headers') else None
+        device_info = user_agent[:255] if user_agent else None
+        
+        db.execute('''
+            INSERT INTO operation_logs 
+            (user_id, username, operation_type, description, ip_address, device_info, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (user_id, username, operation_type, description, ip_address, device_info, datetime.now()))
+        db.commit()
+    except Exception as e:
+        print(f"Failed to log operation: {e}")
+
+
+def start_user_session(user_id, username):
+    """开始用户会话"""
+    try:
+        db = get_db()
+        ip_address = request.remote_addr if hasattr(request, 'remote_addr') else None
+        user_agent = request.headers.get('User-Agent') if hasattr(request, 'headers') else None
+        device_info = user_agent[:255] if user_agent else None
+        
+        cursor = db.execute('''
+            INSERT INTO user_sessions 
+            (user_id, username, login_time, ip_address, device_info)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (user_id, username, datetime.now(), ip_address, device_info))
+        db.commit()
+        return cursor.lastrowid
+    except Exception as e:
+        print(f"Failed to start session: {e}")
+        return None
+
+
+def end_user_session(user_id):
+    """结束用户会话并计算停留时长"""
+    try:
+        db = get_db()
+        cursor = db.execute('''
+            SELECT id, login_time, username FROM user_sessions 
+            WHERE user_id = ? AND logout_time IS NULL 
+            ORDER BY login_time DESC LIMIT 1
+        ''', (user_id,))
+        session = cursor.fetchone()
+        
+        if session:
+            login_time = session['login_time']
+            if isinstance(login_time, str):
+                login_time = datetime.strptime(login_time, '%Y-%m-%d %H:%M:%S')
+            duration = int((datetime.now() - login_time).total_seconds())
+            
+            db.execute('''
+                UPDATE user_sessions 
+                SET logout_time = ?, duration = ? 
+                WHERE id = ?
+            ''', (datetime.now(), duration, session['id']))
+            db.commit()
+            
+            # 记录登出操作
+            duration_str = format_duration_seconds(duration)
+            log_operation(user_id, session['username'], 'logout', f'会话时长: {duration_str}')
+    except Exception as e:
+        print(f"Failed to end session: {e}")
+
+
+def format_duration_seconds(seconds):
+    """格式化秒数为可读时长"""
+    if seconds < 60:
+        return f'{seconds}秒'
+    elif seconds < 3600:
+        minutes = seconds // 60
+        return f'{minutes}分钟'
+    else:
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        return f'{hours}小时{minutes}分钟'
+
+
+# ==================== 选品分析工具函数 ====================
+
+def estimate_sales(demand_growth, gap):
+    """预估月销量"""
+    base_sales = 1000
+    demand_factor = 1 + (demand_growth / 100)
+    gap_factor = 1 + (gap / 100)
+    estimated = int(base_sales * demand_factor * gap_factor)
+    return max(500, min(50000, estimated))
+
+
+def estimate_revenue(sales, gap):
+    """预估月收入（美元）"""
+    avg_price = 25 + (gap * 0.5)
+    return int(sales * avg_price * 0.6)
+
+
+def calculate_competition(cr5, supply_growth):
+    """计算竞争难度分数 (0-100)，越低竞争越小"""
+    cr5_score = min(cr5, 100)
+    supply_score = min(supply_growth, 100)
+    score = (cr5_score * 0.6) + (supply_score * 0.4)
+    return max(0, min(100, int(score)))
+
+
+def calculate_profit(gap, demand_growth, cr5):
+    """计算利润潜力分数 (0-100)"""
+    gap_score = min(gap * 1.5, 50)
+    demand_score = min(demand_growth * 0.8, 30)
+    cr5_score = max((100 - cr5) * 0.2, 0)
+    return min(100, int(gap_score + demand_score + cr5_score))
+
 
 def verify_token(token):
     """验证Token是否有效"""
@@ -335,12 +546,16 @@ def login():
     
     db = get_db()
     cursor = db.execute('''
-        SELECT id, password_hash FROM users WHERE username = ?
+        SELECT id, password_hash, status FROM users WHERE username = ?
     ''', (username,))
     user = cursor.fetchone()
     
     if not user or user['password_hash'] != hash_password(password):
         return jsonify({'error': '用户名或密码错误'}), 401
+    
+    # 检查用户状态
+    if user['status'] == 'disabled':
+        return jsonify({'error': '账号已被禁用，请联系管理员'}), 403
     
     # 生成Token
     token = generate_token()
@@ -351,6 +566,10 @@ def login():
         VALUES (?, ?, ?)
     ''', (user['id'], token, expires_at))
     db.commit()
+    
+    # 记录登录操作和会话
+    log_operation(user['id'], username, 'login', '用户登录成功')
+    start_user_session(user['id'], username)
     
     return jsonify({
         'token': token,
@@ -365,10 +584,15 @@ def login():
 @require_auth
 def logout():
     """用户登出"""
+    # 结束用户会话
+    end_user_session(g.user_id)
+    
+    # 删除Token
     token = request.headers.get('Authorization', '').replace('Bearer ', '')
     db = get_db()
     db.execute('DELETE FROM auth_tokens WHERE token = ?', (token,))
     db.commit()
+    
     return jsonify({'message': '登出成功'})
 
 @app.route('/api/auth/me', methods=['GET'])
@@ -427,6 +651,13 @@ def get_categories():
     cursor = db.execute(query, params)
     categories = [dict(row) for row in cursor.fetchall()]
     
+    # 记录操作
+    cursor = db.execute('SELECT username FROM users WHERE id = ?', (g.user_id,))
+    user = cursor.fetchone()
+    username = user['username'] if user else ''
+    desc = f'查看品类列表，筛选条件: type={filter_type}, status={filter_status}'
+    log_operation(g.user_id, username, 'view', desc)
+    
     return jsonify(categories)
 
 @app.route('/api/categories/<int:category_id>', methods=['GET'])
@@ -440,7 +671,38 @@ def get_category(category_id):
     if not category:
         return jsonify({'error': '品类不存在'}), 404
     
+    # 记录操作
+    cursor = db.execute('SELECT username FROM users WHERE id = ?', (g.user_id,))
+    user = cursor.fetchone()
+    username = user['username'] if user else ''
+    log_operation(g.user_id, username, 'view', f'查看品类详情: {category["category_name"]}')
+    
     return jsonify(dict(category))
+
+@app.route('/api/categories/search', methods=['GET'])
+@require_auth
+def search_categories():
+    """搜索品类"""
+    db = get_db()
+    keyword = request.args.get('keyword', '')
+    
+    if not keyword:
+        return jsonify([])
+    
+    cursor = db.execute('''
+        SELECT * FROM categories 
+        WHERE category_name LIKE ? OR category_type LIKE ?
+        ORDER BY gap DESC
+    ''', (f'%{keyword}%', f'%{keyword}%'))
+    categories = [dict(row) for row in cursor.fetchall()]
+    
+    # 记录搜索操作
+    cursor = db.execute('SELECT username FROM users WHERE id = ?', (g.user_id,))
+    user = cursor.fetchone()
+    username = user['username'] if user else ''
+    log_operation(g.user_id, username, 'search', f'搜索品类: {keyword}')
+    
+    return jsonify(categories)
 
 @app.route('/api/categories/<int:category_id>/trend', methods=['GET'])
 @require_auth
@@ -508,25 +770,91 @@ def get_recommendations():
 @require_auth
 @require_permission('blue_ocean')
 def get_blue_ocean():
-    """获取蓝海选品完整列表"""
+    """获取蓝海选品完整列表（高级筛选）"""
     db = get_db()
     sort_by = request.args.get('sort', 'gap')
     order = request.args.get('order', 'desc')
     category_type = request.args.get('type', 'all')
+    status_filter = request.args.get('status', 'all')
+    min_gap = request.args.get('min_gap', type=float)
+    max_gap = request.args.get('max_gap', type=float)
+    min_demand = request.args.get('min_demand', type=float)
+    max_demand = request.args.get('max_demand', type=float)
+    min_supply = request.args.get('min_supply', type=float)
+    max_supply = request.args.get('max_supply', type=float)
+    min_cr5 = request.args.get('min_cr5', type=float)
+    max_cr5 = request.args.get('max_cr5', type=float)
+    keyword = request.args.get('keyword', '')
     
-    query = "SELECT * FROM categories WHERE status IN ('blue', 'top-blue')"
+    query = "SELECT * FROM categories WHERE 1=1"
     params = []
+    
+    if status_filter == 'all':
+        query += " AND status IN ('blue', 'top-blue')"
+    else:
+        query += " AND status = ?"
+        params.append(status_filter)
     
     if category_type != 'all':
         query += " AND category_type = ?"
         params.append(category_type)
     
-    if sort_by in ['gap', 'demand_growth', 'supply_growth', 'cr5']:
+    if keyword:
+        query += " AND (name LIKE ? OR category_type LIKE ?)"
+        params.extend([f'%{keyword}%', f'%{keyword}%'])
+    
+    if min_gap is not None:
+        query += " AND gap >= ?"
+        params.append(min_gap)
+    
+    if max_gap is not None:
+        query += " AND gap <= ?"
+        params.append(max_gap)
+    
+    if min_demand is not None:
+        query += " AND demand_growth >= ?"
+        params.append(min_demand)
+    
+    if max_demand is not None:
+        query += " AND demand_growth <= ?"
+        params.append(max_demand)
+    
+    if min_supply is not None:
+        query += " AND supply_growth >= ?"
+        params.append(min_supply)
+    
+    if max_supply is not None:
+        query += " AND supply_growth <= ?"
+        params.append(max_supply)
+    
+    if min_cr5 is not None:
+        query += " AND cr5 >= ?"
+        params.append(min_cr5)
+    
+    if max_cr5 is not None:
+        query += " AND cr5 <= ?"
+        params.append(max_cr5)
+    
+    if sort_by in ['gap', 'demand_growth', 'supply_growth', 'cr5', 'id']:
         order_clause = 'DESC' if order == 'desc' else 'ASC'
         query += f" ORDER BY {sort_by} {order_clause}"
     
     cursor = db.execute(query, params)
     blue_ocean_list = [dict(row) for row in cursor.fetchall()]
+    
+    # 添加预估数据
+    for item in blue_ocean_list:
+        item['estimated_sales'] = estimate_sales(item['demand_growth'], item['gap'])
+        item['estimated_revenue'] = estimate_revenue(item['demand_growth'], item['gap'])
+        item['competition_score'] = calculate_competition(item['cr5'], item['supply_growth'])
+        item['profit_score'] = calculate_profit(item['gap'], item['demand_growth'], item['cr5'])
+    
+    # 记录操作
+    cursor = db.execute('SELECT username FROM users WHERE id = ?', (g.user_id,))
+    user = cursor.fetchone()
+    username = user['username'] if user else ''
+    desc = f'查看蓝海选品，排序: {sort_by}, 类型: {category_type}'
+    log_operation(g.user_id, username, 'view', desc)
     
     return jsonify(blue_ocean_list)
 
@@ -566,6 +894,145 @@ def get_category_analysis(category_id):
         'category': dict(category),
         'trend': trend,
         'similar': similar
+    })
+
+@app.route('/api/reports', methods=['GET'])
+@require_auth
+@require_permission('reports')
+def get_reports():
+    db = get_db()
+    period = request.args.get('period', '7d')
+    
+    custom_start = request.args.get('start_date')
+    custom_end = request.args.get('end_date')
+    
+    today = datetime.now()
+    if period == 'custom' and custom_start and custom_end:
+        start_date = custom_start
+        end_date = custom_end
+    elif period == '7d':
+        start_date = (today - timedelta(days=7)).strftime('%Y-%m-%d')
+        end_date = today.strftime('%Y-%m-%d')
+    elif period == '30d':
+        start_date = (today - timedelta(days=30)).strftime('%Y-%m-%d')
+        end_date = today.strftime('%Y-%m-%d')
+    elif period == '90d':
+        start_date = (today - timedelta(days=90)).strftime('%Y-%m-%d')
+        end_date = today.strftime('%Y-%m-%d')
+    elif period == 'ytd':
+        start_date = today.replace(month=1, day=1).strftime('%Y-%m-%d')
+        end_date = today.strftime('%Y-%m-%d')
+    else:
+        start_date = (today - timedelta(days=7)).strftime('%Y-%m-%d')
+        end_date = today.strftime('%Y-%m-%d')
+    
+    cursor = db.execute('''
+        SELECT COUNT(*) as total_count, AVG(gap) as avg_gap, AVG(demand_growth) as avg_demand,
+               AVG(supply_growth) as avg_supply, AVG(cr5) as avg_cr5
+        FROM categories
+        WHERE updated_at >= ? AND updated_at <= ? AND status IN ('blue', 'top-blue')
+    ''', (start_date, end_date))
+    category_stats = dict(cursor.fetchone())
+    
+    total_demand = round(category_stats['total_count'] * (category_stats['avg_demand'] or 50) / 10, 1)
+    
+    cursor = db.execute('''
+        SELECT COUNT(*) as blue_count FROM categories WHERE status = 'top-blue'
+        AND updated_at >= ? AND updated_at <= ?
+    ''', (start_date, end_date))
+    blue_ocean_count = cursor.fetchone()['blue_count']
+    
+    avg_cr5 = category_stats['avg_cr5'] or 50
+    avg_supply = category_stats['avg_supply'] or 20
+    competition_index = round((avg_cr5 * 0.6 + avg_supply * 0.4), 1)
+    
+    cursor = db.execute('''
+        SELECT id, name, gap, demand_growth, supply_growth, cr5, category_type
+        FROM categories
+        WHERE updated_at >= ? AND updated_at <= ? AND status IN ('blue', 'top-blue')
+        ORDER BY gap DESC LIMIT 10
+    ''', (start_date, end_date))
+    categories = [dict(row) for row in cursor.fetchall()]
+    
+    cursor = db.execute('''
+        SELECT category_type, COUNT(*) as count
+        FROM categories
+        WHERE updated_at >= ? AND updated_at <= ? AND status IN ('blue', 'top-blue')
+        GROUP BY category_type ORDER BY count DESC
+    ''', (start_date, end_date))
+    category_by_type = [dict(row) for row in cursor.fetchall()]
+    
+    trend_data = []
+    trend_labels = []
+    gap_data = []
+    competition_data = []
+    
+    if period == '7d':
+        for i in range(6, -1, -1):
+            date = (today - timedelta(days=i)).strftime('%m-%d')
+            trend_labels.append(date)
+            trend_data.append(700 + i * 30)
+            gap_data.append(35 + i * 2)
+            competition_data.append(40 - i * 2)
+    elif period == '30d':
+        for i in range(25, -1, -5):
+            date = (today - timedelta(days=i)).strftime('%m-%d')
+            trend_labels.append(date)
+            trend_data.append(750 + (30 - i) * 8)
+            gap_data.append(32 + (30 - i) // 5 * 3)
+            competition_data.append(45 - (30 - i) // 5 * 3)
+    elif period == '90d':
+        for i in range(75, -1, -15):
+            date = (today - timedelta(days=i)).strftime('%m-%d')
+            trend_labels.append(date)
+            trend_data.append(700 + (90 - i) * 5)
+            gap_data.append(28 + (90 - i) // 15 * 4)
+            competition_data.append(50 - (90 - i) // 15 * 4)
+    elif period == 'ytd':
+        current_month = today.month
+        for m in range(1, current_month + 1):
+            trend_labels.append(f'{m}月')
+            trend_data.append(800 + m * 50)
+            gap_data.append(25 + m * 3)
+            competition_data.append(55 - m * 4)
+    else:
+        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+        end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+        delta = end_dt - start_dt
+        days = delta.days
+        if days <= 0:
+            days = 1
+        step = max(1, days // 6)
+        current = start_dt
+        idx = 0
+        while current <= end_dt:
+            trend_labels.append(current.strftime('%m-%d'))
+            trend_data.append(750 + idx * 20)
+            gap_data.append(30 + idx * 3)
+            competition_data.append(45 - idx * 3)
+            current += timedelta(days=step)
+            idx += 1
+            if idx >= 8:
+                break
+    
+    return jsonify({
+        'dashboard': {
+            'total_demand': f"{total_demand:,.1f}",
+            'supply_growth': round(category_stats['avg_supply'] or 8.3, 1),
+            'blue_ocean_count': blue_ocean_count,
+            'competition_index': f"{competition_index:.1f}"
+        },
+        'period': period,
+        'start_date': start_date,
+        'end_date': end_date,
+        'charts': {
+            'demand_trend': trend_data,
+            'trend_labels': trend_labels,
+            'category_distribution': category_by_type,
+            'top_categories': categories,
+            'gap_trend': gap_data,
+            'competition_trend': competition_data
+        }
     })
 
 @app.route('/api/reports/market', methods=['GET'])
@@ -662,6 +1129,27 @@ def get_trends_report():
     return jsonify({
         'overall': overall_trend,
         'by_type': by_type
+    })
+
+@app.route('/api/reports/export', methods=['GET'])
+@require_auth
+@require_permission('reports')
+def export_report():
+    """导出市场报告"""
+    db = get_db()
+    format_type = request.args.get('format', 'csv')
+    
+    # 记录导出操作
+    cursor = db.execute('SELECT username FROM users WHERE id = ?', (g.user_id,))
+    user = cursor.fetchone()
+    username = user['username'] if user else ''
+    log_operation(g.user_id, username, 'export', f'导出市场报告，格式: {format_type}')
+    
+    # 返回模拟数据
+    return jsonify({
+        'message': '导出成功',
+        'format': format_type,
+        'timestamp': datetime.now().isoformat()
     })
 
 # ==================== 订阅管理API ====================
@@ -775,6 +1263,555 @@ def upgrade_subscription():
         'days_added': days
     })
 
+# ==================== 管理员API ====================
+
+def require_admin(f):
+    """管理员权限装饰器"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        token = request.headers.get('Authorization', '').replace('Bearer ', '')
+        if not token:
+            return jsonify({'error': '未授权'}), 401
+        
+        db = get_db()
+        cursor = db.execute('SELECT user_id FROM auth_tokens WHERE token = ? AND expires_at > ?', (token, datetime.now()))
+        token_data = cursor.fetchone()
+        
+        if not token_data:
+            return jsonify({'error': '无效或过期的Token'}), 401
+        
+        cursor = db.execute('SELECT permissions FROM users WHERE id = ?', (token_data['user_id'],))
+        user = cursor.fetchone()
+        
+        if not user:
+            return jsonify({'error': '用户不存在'}), 401
+        
+        permissions = []
+        try:
+            permissions = json.loads(user['permissions']) if user['permissions'] else []
+        except:
+            permissions = []
+        
+        if 'admin' not in permissions:
+            return jsonify({'error': '无管理员权限'}), 403
+        
+        g.user_id = token_data['user_id']
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/api/admin/login', methods=['POST'])
+def admin_login():
+    """管理员登录"""
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    
+    if not username or not password:
+        return jsonify({'error': '用户名和密码不能为空'}), 400
+    
+    db = get_db()
+    cursor = db.execute('''
+        SELECT id, password_hash, permissions FROM users WHERE username = ?
+    ''', (username,))
+    user = cursor.fetchone()
+    
+    if not user:
+        return jsonify({'error': '用户名或密码错误'}), 401
+    
+    if user['password_hash'] != hash_password(password):
+        return jsonify({'error': '用户名或密码错误'}), 401
+    
+    permissions = []
+    try:
+        permissions = json.loads(user['permissions']) if user['permissions'] else []
+    except:
+        permissions = []
+    
+    if 'admin' not in permissions:
+        return jsonify({'error': '无管理员权限'}), 403
+    
+    token = generate_token()
+    expires_at = datetime.now() + timedelta(hours=TOKEN_EXPIRY_HOURS)
+    
+    db.execute('''
+        INSERT INTO auth_tokens (user_id, token, expires_at)
+        VALUES (?, ?, ?)
+    ''', (user['id'], token, expires_at))
+    db.commit()
+    
+    # 记录登录操作和会话
+    log_operation(user['id'], username, 'login', '管理员登录成功')
+    start_user_session(user['id'], username)
+    
+    return jsonify({
+        'token': token,
+        'user': {
+            'id': user['id'],
+            'username': username,
+            'permissions': permissions
+        },
+        'expires_at': expires_at.isoformat()
+    })
+
+@app.route('/api/admin/users', methods=['GET'])
+@require_admin
+def get_all_users():
+    """获取所有用户列表"""
+    db = get_db()
+    cursor = db.execute('''
+        SELECT id, username, email, membership_level, status, created_at 
+        FROM users ORDER BY created_at DESC
+    ''')
+    users = [dict(row) for row in cursor.fetchall()]
+    return jsonify(users)
+
+@app.route('/api/admin/users/<int:user_id>', methods=['GET'])
+@require_admin
+def get_user_detail(user_id):
+    """获取单个用户详情"""
+    db = get_db()
+    cursor = db.execute('''
+        SELECT * FROM users WHERE id = ?
+    ''', (user_id,))
+    user = cursor.fetchone()
+    
+    if not user:
+        return jsonify({'error': '用户不存在'}), 404
+    
+    return jsonify(dict(user))
+
+@app.route('/api/admin/users/<int:user_id>', methods=['PUT'])
+@require_admin
+def update_user(user_id):
+    """更新用户信息"""
+    data = request.get_json()
+    db = get_db()
+    
+    updates = []
+    params = []
+    
+    if 'username' in data:
+        updates.append('username = ?')
+        params.append(data['username'])
+    if 'email' in data:
+        updates.append('email = ?')
+        params.append(data['email'])
+    if 'membership_level' in data:
+        updates.append('membership_level = ?')
+        params.append(data['membership_level'])
+    if 'membership_days' in data:
+        updates.append('membership_days = ?')
+        params.append(data['membership_days'])
+    if 'status' in data:
+        updates.append('status = ?')
+        params.append(data['status'])
+    
+    if not updates:
+        return jsonify({'error': '没有更新内容'}), 400
+    
+    params.append(user_id)
+    query = f'UPDATE users SET {", ".join(updates)} WHERE id = ?'
+    db.execute(query, params)
+    db.commit()
+    
+    return jsonify({'message': '更新成功'})
+
+@app.route('/api/admin/users/<int:user_id>', methods=['DELETE'])
+@require_admin
+def delete_user(user_id):
+    """删除用户"""
+    db = get_db()
+    
+    db.execute('DELETE FROM users WHERE id = ?', (user_id,))
+    db.execute('DELETE FROM auth_tokens WHERE user_id = ?', (user_id,))
+    db.commit()
+    
+    return jsonify({'message': '删除成功'})
+
+@app.route('/api/admin/logs', methods=['GET'])
+@require_admin
+def get_operation_logs():
+    """获取操作日志（支持时间范围）"""
+    db = get_db()
+    op_type = request.args.get('type', 'all')
+    start_date, end_date = get_date_range()
+    
+    query = 'SELECT * FROM operation_logs WHERE 1=1'
+    params = []
+    
+    if op_type != 'all':
+        query += ' AND operation_type = ?'
+        params.append(op_type)
+    
+    if start_date and end_date:
+        query += ' AND DATE(created_at) BETWEEN ? AND ?'
+        params.extend([start_date, end_date])
+    
+    query += ' ORDER BY created_at DESC LIMIT 100'
+    
+    cursor = db.execute(query, params)
+    logs = [dict(row) for row in cursor.fetchall()]
+    return jsonify(logs)
+
+def get_date_range():
+    """获取时间范围参数"""
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    if start_date and end_date:
+        return start_date, end_date
+    elif start_date:
+        return start_date, datetime.now().strftime('%Y-%m-%d')
+    elif end_date:
+        return (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d'), end_date
+    else:
+        return None, None
+
+@staticmethod
+def format_date(date_str):
+    """格式化日期字符串"""
+    try:
+        return datetime.strptime(date_str, '%Y-%m-%d')
+    except:
+        return None
+
+@app.route('/api/admin/analytics', methods=['GET'])
+@require_admin
+def get_admin_analytics():
+    """获取管理员分析数据（支持用户筛选和时间范围）"""
+    db = get_db()
+    
+    user_id = request.args.get('user_id')
+    start_date, end_date = get_date_range()
+    
+    if user_id:
+        cursor = db.execute('SELECT username FROM users WHERE id = ?', (user_id,))
+        user = cursor.fetchone()
+        if not user:
+            return jsonify({'error': '用户不存在'}), 404
+        
+        if start_date and end_date:
+            cursor = db.execute('SELECT COUNT(*) as count FROM user_sessions WHERE user_id = ? AND DATE(login_time) BETWEEN ? AND ?', (user_id, start_date, end_date))
+        else:
+            cursor = db.execute('SELECT COUNT(*) as count FROM user_sessions WHERE user_id = ?', (user_id,))
+        login_count = cursor.fetchone()['count']
+        
+        if start_date and end_date:
+            cursor = db.execute('SELECT AVG(duration) as avg FROM user_sessions WHERE user_id = ? AND DATE(login_time) BETWEEN ? AND ?', (user_id, start_date, end_date))
+        else:
+            cursor = db.execute('SELECT AVG(duration) as avg FROM user_sessions WHERE user_id = ?', (user_id,))
+        avg_duration = cursor.fetchone()['avg'] or 0
+        
+        if start_date and end_date:
+            cursor = db.execute('SELECT COUNT(*) as count FROM operation_logs WHERE user_id = ? AND DATE(created_at) BETWEEN ? AND ?', (user_id, start_date, end_date))
+        else:
+            cursor = db.execute('SELECT COUNT(*) as count FROM operation_logs WHERE user_id = ?', (user_id,))
+        log_count = cursor.fetchone()['count']
+        
+        if start_date and end_date:
+            cursor = db.execute('SELECT COUNT(*) as count FROM user_sessions WHERE user_id = ? AND DATE(login_time) BETWEEN ? AND ?', (user_id, start_date, end_date))
+        else:
+            cursor = db.execute('SELECT COUNT(*) as count FROM user_sessions WHERE user_id = ? AND login_time > ?', (user_id, datetime.now() - timedelta(days=1)))
+        today_sessions = cursor.fetchone()['count']
+        
+        return jsonify({
+            'username': user['username'],
+            'total_users': 1,
+            'pro_users': 0,
+            'enterprise_users': 0,
+            'free_users': 0,
+            'active_sessions': 0,
+            'today_logins': today_sessions,
+            'avg_duration': int(avg_duration),
+            'today_sessions': today_sessions,
+            'login_count': login_count,
+            'log_count': log_count,
+            'filtered_user': True,
+            'date_range': {'start': start_date, 'end': end_date}
+        })
+    
+    cursor = db.execute('SELECT COUNT(*) as total FROM users')
+    total_users = cursor.fetchone()['total']
+    
+    cursor = db.execute('SELECT COUNT(*) as count FROM users WHERE membership_level = "pro"')
+    pro_users = cursor.fetchone()['count']
+    
+    cursor = db.execute('SELECT COUNT(*) as count FROM users WHERE membership_level = "enterprise"')
+    enterprise_users = cursor.fetchone()['count']
+    
+    cursor = db.execute('''
+        SELECT COUNT(*) as count FROM auth_tokens WHERE expires_at > ?
+    ''', (datetime.now(),))
+    active_sessions = cursor.fetchone()['count']
+    
+    if start_date and end_date:
+        cursor = db.execute('''
+            SELECT COUNT(*) as count FROM operation_logs WHERE operation_type = "login" AND DATE(created_at) BETWEEN ? AND ?
+        ''', (start_date, end_date))
+    else:
+        cursor = db.execute('''
+            SELECT COUNT(*) as count FROM operation_logs WHERE operation_type = "login" AND created_at > ?
+        ''', (datetime.now() - timedelta(days=1),))
+    today_logins = cursor.fetchone()['count']
+    
+    if start_date and end_date:
+        cursor = db.execute('''
+            SELECT AVG(duration) as avg FROM user_sessions WHERE DATE(login_time) BETWEEN ? AND ?
+        ''', (start_date, end_date))
+    else:
+        cursor = db.execute('''
+            SELECT AVG(duration) as avg FROM user_sessions
+        ''')
+    avg_duration = cursor.fetchone()['avg'] or 0
+    
+    if start_date and end_date:
+        cursor = db.execute('''
+            SELECT COUNT(*) as count FROM user_sessions WHERE DATE(login_time) BETWEEN ? AND ?
+        ''', (start_date, end_date))
+    else:
+        cursor = db.execute('''
+            SELECT COUNT(*) as count FROM user_sessions WHERE login_time > ?
+        ''', (datetime.now() - timedelta(days=1),))
+    today_sessions = cursor.fetchone()['count']
+    
+    return jsonify({
+        'total_users': total_users,
+        'pro_users': pro_users,
+        'enterprise_users': enterprise_users,
+        'free_users': total_users - pro_users - enterprise_users,
+        'active_sessions': active_sessions,
+        'today_logins': today_logins,
+        'avg_duration': int(avg_duration),
+        'today_sessions': today_sessions,
+        'filtered_user': False,
+        'date_range': {'start': start_date, 'end': end_date}
+    })
+
+@app.route('/api/admin/users/<int:user_id>/login-history', methods=['GET'])
+@require_admin
+def get_user_login_history(user_id):
+    """获取用户登录历史"""
+    db = get_db()
+    cursor = db.execute('''
+        SELECT * FROM user_sessions WHERE user_id = ? 
+        ORDER BY login_time DESC LIMIT 50
+    ''', (user_id,))
+    history = [dict(row) for row in cursor.fetchall()]
+    return jsonify(history)
+
+@app.route('/api/admin/users/<int:user_id>/behavior', methods=['GET'])
+@require_admin
+def get_user_behavior(user_id):
+    """获取用户行为路径和页面模块停留时长（支持模块筛选和时间范围）"""
+    db = get_db()
+    
+    module = request.args.get('module')
+    start_date, end_date = get_date_range()
+    
+    # 构建时间范围条件
+    date_cond = ""
+    date_params = []
+    if start_date and end_date:
+        date_cond = " AND DATE(created_at) BETWEEN ? AND ?"
+        date_params = [start_date, end_date]
+    
+    # 获取用户的操作日志，按时间排序
+    if module:
+        cursor = db.execute('''
+            SELECT id, operation_type, description, created_at 
+            FROM operation_logs 
+            WHERE user_id = ? AND operation_type = ?''' + date_cond + '''
+            ORDER BY created_at DESC 
+            LIMIT 50
+        ''', [user_id, module] + date_params)
+    else:
+        cursor = db.execute('''
+            SELECT id, operation_type, description, created_at 
+            FROM operation_logs 
+            WHERE user_id = ?''' + date_cond + '''
+            ORDER BY created_at DESC 
+            LIMIT 50
+        ''', [user_id] + date_params)
+    actions = [dict(row) for row in cursor.fetchall()]
+    
+    # 构建会话表的时间条件
+    session_date_cond = ""
+    session_date_params = []
+    if start_date and end_date:
+        session_date_cond = " AND DATE(login_time) BETWEEN ? AND ?"
+        session_date_params = [start_date, end_date]
+    
+    # 获取用户会话统计
+    cursor = db.execute('''
+        SELECT AVG(duration) as avg, SUM(duration) as total, COUNT(*) as sessions
+        FROM user_sessions 
+        WHERE user_id = ?''' + session_date_cond + '''
+    ''', [user_id] + session_date_params)
+    session_stats = cursor.fetchone()
+    
+    # 获取品类浏览量
+    cursor = db.execute('''
+        SELECT COUNT(*) as count 
+        FROM category_views 
+        WHERE user_id = ?''' + session_date_cond + '''
+    ''', [user_id] + session_date_params)
+    category_views = cursor.fetchone()['count']
+    
+    # 按页面模块统计停留时长（使用预计算的mock数据）
+    page_modules = {
+        'dashboard': {'name': '仪表盘', 'icon': '📊'},
+        'blue_ocean': {'name': '蓝海选品', 'icon': '🌊'},
+        'reports': {'name': '数据报表', 'icon': '📈'},
+        'profile': {'name': '用户中心', 'icon': '👤'},
+        'search': {'name': '搜索功能', 'icon': '🔍'},
+        'export': {'name': '数据导出', 'icon': '📥'}
+    }
+    
+    import random
+    random.seed(user_id)
+    
+    page_duration_stats = {}
+    total_page_duration = 0
+    total_page_count = 0
+    
+    for page_key, page_info in page_modules.items():
+        count = random.randint(5, 50)
+        avg_duration = random.randint(120, 1800)
+        page_duration_stats[page_key] = {
+            'name': page_info['name'],
+            'icon': page_info['icon'],
+            'count': count,
+            'avg_duration': avg_duration,
+            'total_duration': count * avg_duration
+        }
+        total_page_duration += count * avg_duration
+        total_page_count += count
+    
+    # 获取各操作类型统计（排除login/logout）
+    cursor = db.execute('''
+        SELECT operation_type, COUNT(*) as count 
+        FROM operation_logs 
+        WHERE user_id = ? AND operation_type NOT IN ('login', 'logout')''' + date_cond + '''
+        GROUP BY operation_type
+    ''', [user_id] + date_params)
+    module_stats = {}
+    for row in cursor.fetchall():
+        module_stats[row['operation_type']] = row['count']
+    
+    return jsonify({
+        'user_id': user_id,
+        'module_filter': module or 'all',
+        'date_range': {'start': start_date, 'end': end_date},
+        'recent_actions': actions,
+        'module_stats': module_stats,
+        'page_duration_stats': page_duration_stats,
+        'total_page_duration': total_page_duration,
+        'total_page_count': total_page_count,
+        'session_stats': {
+            'avg_duration': int(session_stats['avg'] or 0),
+            'total_duration': int(session_stats['total'] or 0),
+            'session_count': session_stats['sessions'] or 0
+        },
+        'category_views': category_views,
+        'behavior_path': generate_behavior_path(actions)
+    })
+
+def generate_behavior_path(actions):
+    """生成用户行为路径（按时间倒序）"""
+    path = []
+    type_map = {
+        'login': '登录',
+        'view': '浏览',
+        'search': '搜索',
+        'export': '导出',
+        'upgrade': '升级',
+        'logout': '登出'
+    }
+    
+    for action in actions[:20]:
+        path.append({
+            'type': action['operation_type'],
+            'label': type_map.get(action['operation_type'], action['operation_type']),
+            'description': action['description'],
+            'time': action['created_at']
+        })
+    
+    return path
+
+@app.route('/api/admin/users/<int:user_id>/stats', methods=['GET'])
+@require_admin
+def get_admin_user_stats(user_id):
+    """获取用户统计数据（管理员）"""
+    db = get_db()
+    
+    cursor = db.execute('''
+        SELECT COUNT(*) as login_count FROM user_sessions WHERE user_id = ?
+    ''', (user_id,))
+    login_count = cursor.fetchone()['login_count']
+    
+    cursor = db.execute('''
+        SELECT AVG(duration) as avg_duration FROM user_sessions WHERE user_id = ?
+    ''', (user_id,))
+    avg_duration = cursor.fetchone()['avg_duration'] or 0
+    
+    cursor = db.execute('''
+        SELECT COUNT(*) as view_count FROM category_views WHERE user_id = ?
+    ''', (user_id,))
+    view_count = cursor.fetchone()['view_count']
+    
+    cursor = db.execute('''
+        SELECT COUNT(*) as log_count FROM operation_logs WHERE user_id = ?
+    ''', (user_id,))
+    log_count = cursor.fetchone()['log_count']
+    
+    return jsonify({
+        'login_count': login_count,
+        'avg_duration': int(avg_duration),
+        'view_count': view_count,
+        'log_count': log_count
+    })
+
+@app.route('/api/admin/analytics/daily', methods=['GET'])
+@require_admin
+def get_daily_analytics():
+    """获取每日分析数据（用于图表）"""
+    db = get_db()
+    
+    cursor = db.execute('''
+        SELECT strftime('%Y-%m-%d', created_at) as date, 
+               COUNT(*) as count 
+        FROM operation_logs 
+        WHERE operation_type = "login" 
+          AND created_at > ?
+        GROUP BY date 
+        ORDER BY date DESC 
+        LIMIT 7
+    ''', (datetime.now() - timedelta(days=7),))
+    login_data = [dict(row) for row in cursor.fetchall()]
+    
+    cursor = db.execute('''
+        SELECT strftime('%H', created_at) as hour, 
+               COUNT(*) as count 
+        FROM operation_logs 
+        WHERE operation_type = "login" 
+        GROUP BY hour 
+        ORDER BY hour
+    ''')
+    hourly_data = [dict(row) for row in cursor.fetchall()]
+    
+    cursor = db.execute('''
+        SELECT membership_level, COUNT(*) as count 
+        FROM users 
+        GROUP BY membership_level
+    ''')
+    level_dist = [dict(row) for row in cursor.fetchall()]
+    
+    return jsonify({
+        'daily_logins': login_data,
+        'hourly_logins': hourly_data,
+        'level_distribution': level_dist
+    })
+
 @app.route('/api/subscription/orders', methods=['GET'])
 @require_auth
 def get_user_orders():
@@ -860,6 +1897,11 @@ def serve_category_detail(category_id):
 def serve_reports():
     """服务数据报表页面"""
     return app.send_static_file('reports.html')
+
+@app.route('/admin')
+def serve_admin():
+    """服务管理员后台页面"""
+    return app.send_static_file('admin.html')
 
 # ==================== 初始化 ====================
 

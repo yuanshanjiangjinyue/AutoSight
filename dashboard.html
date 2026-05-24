@@ -1216,7 +1216,7 @@
                         <li><span class="icon cross">✗</span>品类趋势分析</li>
                         <li><span class="icon cross">✗</span>优先级客户支持</li>
                     </ul>
-                    <button class="btn-pricing secondary">免费开始</button>
+                    <button class="btn-pricing secondary" onclick="processSubscription('free')">免费开始</button>
                 </div>
 
                 <div class="pricing-card featured">
@@ -1231,7 +1231,7 @@
                         <li><span class="icon check">✓</span>数据导出功能</li>
                         <li><span class="icon check">✓</span>优先级客户支持</li>
                     </ul>
-                    <button class="btn-pricing primary">立即试用7天</button>
+                    <button class="btn-pricing primary" onclick="processSubscription('pro')">立即试用7天</button>
                 </div>
 
                 <div class="pricing-card">
@@ -1246,7 +1246,7 @@
                         <li><span class="icon check">✓</span>专属客户成功经理</li>
                         <li><span class="icon check">✓</span>SLA服务保障</li>
                     </ul>
-                    <button class="btn-pricing secondary">联系销售</button>
+                    <button class="btn-pricing secondary" onclick="processSubscription('enterprise')">联系销售</button>
                 </div>
             </div>
         </div>
@@ -1564,6 +1564,24 @@
         function openPricing() {
             const pricingSection = document.querySelector('.pricing-section');
             pricingSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function processSubscription(plan) {
+            const plans = {
+                'free': { name: '免费版', price: '¥0', features: '基础供需数据查看、5个蓝海品类推荐、基础报表导出' },
+                'pro': { name: '专业版', price: '¥699/月', features: '全部128个品类跟踪、AI蓝海选品推荐、趋势深度分析、数据导出' },
+                'enterprise': { name: '企业版', price: '¥1999/月', features: '专业版全部功能、10人团队协作、API对接、专属客户成功经理' }
+            };
+            
+            const planInfo = plans[plan];
+            
+            if (plan === 'enterprise') {
+                alert(`🎉 感谢您对${planInfo.name}的兴趣！\n\n${planInfo.name}功能包括：\n${planInfo.features}\n\n请联系销售团队获取定制报价：\n📧 sales@autosight.com\n📞 400-888-8888`);
+            } else if (plan === 'pro') {
+                alert(`🎉 即将升级到${planInfo.name}！\n\n${planInfo.name}功能包括：\n${planInfo.features}\n\n价格：${planInfo.price}\n\n请联系客服完成升级：\n📧 support@autosight.com`);
+            } else {
+                alert(`您已使用${planInfo.name}！\n\n${planInfo.features}\n\n如需升级到专业版或企业版，请联系客服。`);
+            }
         }
 
         async function logout() {

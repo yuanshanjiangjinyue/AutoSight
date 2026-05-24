@@ -550,6 +550,53 @@
             display: flex;
         }
 
+        .custom-date-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            display: none;
+        }
+
+        .date-inputs {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .date-input-group {
+            flex: 1;
+        }
+
+        .date-input-group label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .date-input-group input {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .date-separator {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+
         .modal-content {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -1031,9 +1078,33 @@
     </div>
 
     <div class="toast" id="toast">
-        <span class="toast-icon">✅</span>
-        <span class="toast-text">导出成功！</span>
-    </div>
+            <span class="toast-icon">✅</span>
+            <span class="toast-text">导出成功！</span>
+        </div>
+
+        <div class="custom-date-modal" id="customDateModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span class="modal-title">选择日期范围</span>
+                    <button class="modal-close" onclick="hideCustomDateModal()">✕</button>
+                </div>
+                <div class="date-inputs">
+                    <div class="date-input-group">
+                        <label>开始日期</label>
+                        <input type="date" id="customStartDate" max="2026-12-31">
+                    </div>
+                    <div class="date-separator">至</div>
+                    <div class="date-input-group">
+                        <label>结束日期</label>
+                        <input type="date" id="customEndDate" max="2026-12-31">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="modal-btn secondary" onclick="hideCustomDateModal()">取消</button>
+                    <button class="modal-btn primary" onclick="applyCustomDate()">确认应用</button>
+                </div>
+            </div>
+        </div>
 
     <script>
         const API_BASE = '/api';
@@ -1062,9 +1133,46 @@
             };
         }
 
+        let currentPeriod = '7d';
+        let customStartDate = '';
+        let customEndDate = '';
+
         function setPeriod(period) {
+            if (period === 'custom') {
+                showCustomDateModal();
+                return;
+            }
+            currentPeriod = period;
             document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
+            refreshData();
+        }
+
+        function showCustomDateModal() {
+            document.getElementById('customDateModal').style.display = 'flex';
+        }
+
+        function hideCustomDateModal() {
+            document.getElementById('customDateModal').style.display = 'none';
+        }
+
+        function applyCustomDate() {
+            customStartDate = document.getElementById('customStartDate').value;
+            customEndDate = document.getElementById('customEndDate').value;
+            
+            if (!customStartDate || !customEndDate) {
+                alert('请选择完整的日期范围');
+                return;
+            }
+            
+            if (customStartDate > customEndDate) {
+                alert('开始日期不能晚于结束日期');
+                return;
+            }
+            
+            currentPeriod = 'custom';
+            document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
+            hideCustomDateModal();
             refreshData();
         }
 
@@ -1072,21 +1180,94 @@
             loadReports();
         }
 
+        let currentReportData = null;
+
         function loadReports() {
-            fetch(`${API_BASE}/reports`, { headers: getAuthHeaders() })
+            let url = `${API_BASE}/reports?period=${currentPeriod}`;
+            if (currentPeriod === 'custom' && customStartDate && customEndDate) {
+                url += `&start_date=${customStartDate}&end_date=${customEndDate}`;
+            }
+            fetch(url, { headers: getAuthHeaders() })
             .then(res => {
                 if (!res.ok) throw new Error('获取数据失败');
                 return res.json();
             })
             .then(data => {
+                currentReportData = data;
                 if (data.dashboard) {
                     document.getElementById('totalDemand').textContent = data.dashboard.total_demand;
                     document.getElementById('supplyGrowth').textContent = data.dashboard.supply_growth + '%';
                     document.getElementById('blueOceanCount').textContent = data.dashboard.blue_ocean_count;
                     document.getElementById('competitionIndex').textContent = data.dashboard.competition_index;
                 }
+                updateCharts();
             })
             .catch(error => console.error('加载报表失败:', error));
+        }
+
+        function updateCharts() {
+            if (!currentReportData || !currentReportData.charts) return;
+            
+            const { charts } = currentReportData;
+            
+            // 使用后端传来的标签
+            const labels = charts.trend_labels || [];
+            
+            // 更新需求趋势图表
+            if (chartInstances['demand']) {
+                chartInstances['demand'].data.labels = labels;
+                chartInstances['demand'].data.datasets[0].data = charts.demand_trend || [];
+                chartInstances['demand'].update();
+            }
+            
+            // 更新品类分布图表
+            if (chartInstances['category'] && charts.category_distribution) {
+                chartInstances['category'].data.labels = charts.category_distribution.map(c => c.category_type);
+                chartInstances['category'].data.datasets[0].data = charts.category_distribution.map(c => c.count);
+                chartInstances['category'].update();
+            }
+            
+            // 更新供需缺口变化图表
+            if (chartInstances['gap'] && charts.gap_trend) {
+                chartInstances['gap'].data.labels = labels;
+                chartInstances['gap'].data.datasets[0].data = charts.gap_trend;
+                chartInstances['gap'].update();
+            }
+            
+            // 更新竞争格局分析图表
+            if (chartInstances['competition'] && charts.competition_trend) {
+                chartInstances['competition'].data.labels = labels;
+                chartInstances['competition'].data.datasets[0].data = charts.competition_trend;
+                chartInstances['competition'].update();
+            }
+            
+            // 更新品类排名表格
+            updateTopCategoriesTable(charts.top_categories);
+        }
+
+        function updateTopCategoriesTable(categories) {
+            const tableBody = document.querySelector('.rank-table tbody');
+            if (!tableBody || !categories) return;
+            
+            const tags = {
+                'new-energy': '新能源',
+                'custom': '定制件',
+                'pet': '宠物',
+                'electronics': '电子',
+                'general': '通用'
+            };
+            
+            tableBody.innerHTML = categories.map((cat, index) => `
+                <tr>
+                    <td><span class="rank-badge ${index < 3 ? 'top' : ''}">${index + 1}</span></td>
+                    <td>${cat.name}</td>
+                    <td><span class="category-tag ${cat.category_type}">${tags[cat.category_type] || '配件'}</span></td>
+                    <td class="value-cell positive">+${cat.gap}%</td>
+                    <td class="value-cell positive">+${cat.demand_growth}%</td>
+                    <td class="value-cell">${cat.cr5}%</td>
+                    <td class="value-cell positive">${Math.round(100 - cat.cr5)}</td>
+                </tr>
+            `).join('');
         }
 
         function initCharts() {
@@ -1248,12 +1429,52 @@
 
         function toggleChartType(chartId) {
             const chart = chartInstances[chartId];
-            if (chart) {
-                const newType = chart.config.type === 'line' ? 'bar' : 
-                               chart.config.type === 'bar' ? 'line' : 'line';
-                chart.config.type = newType;
-                chart.update();
+            if (!chart) return;
+            
+            let newType;
+            if (chart.config.type === 'line') {
+                newType = 'bar';
+            } else if (chart.config.type === 'bar') {
+                newType = 'line';
+            } else if (chart.config.type === 'doughnut') {
+                newType = 'pie';
+            } else if (chart.config.type === 'pie') {
+                newType = 'doughnut';
+            } else {
+                newType = 'line';
             }
+            
+            const canvas = chart.canvas;
+            const ctx = canvas.getContext('2d');
+            
+            const data = JSON.parse(JSON.stringify(chart.data));
+            const options = JSON.parse(JSON.stringify(chart.options));
+            
+            // 添加过渡动画
+            if (!options.animation) {
+                options.animation = {};
+            }
+            options.animation.duration = 600;
+            options.animation.easing = 'easeInOutQuart';
+            
+            // 添加CSS过渡效果
+            canvas.style.opacity = '0';
+            canvas.style.transition = 'opacity 0.2s ease-out';
+            
+            setTimeout(() => {
+                chart.destroy();
+                
+                chartInstances[chartId] = new Chart(ctx, {
+                    type: newType,
+                    data: data,
+                    options: options
+                });
+                
+                // 新图表创建后淡入
+                setTimeout(() => {
+                    canvas.style.opacity = '1';
+                }, 50);
+            }, 200);
         }
 
         function showExportModal() {
